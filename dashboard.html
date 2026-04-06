@@ -64,13 +64,28 @@
             <button class="mode-pill" data-range="monthly">Monthly</button>
           </div>
           <div class="scope-tags">
-            <span>Single User</span>
-            <span>Multi User</span>
-            <span>Corporate</span>
-            <span>Government</span>
+            <button class="scope-chip active" type="button" aria-pressed="true">Single User</button>
+            <button class="scope-chip scope-chip-green" type="button" aria-pressed="false">Multi User</button>
+            <button class="scope-chip scope-chip-yellow" type="button" aria-pressed="false">Corporate</button>
+            <button class="scope-chip scope-chip-red" type="button" aria-pressed="false">Government</button>
           </div>
         </div>
       </header>
+
+      <section class="workspace-tabs hidden" id="workspaceTabs">
+        <div class="workspace-tabbar">
+          <div class="workspace-tablist" id="workspaceTabList"></div>
+          <div class="workspace-tabtools">
+            <button class="workspace-add-btn" id="workspaceAddBtn" type="button" aria-haspopup="true" aria-expanded="false">+</button>
+            <div class="workspace-menu hidden" id="workspaceMenu"></div>
+          </div>
+        </div>
+        <article class="panel workspace-placeholder hidden" id="workspacePlaceholder">
+          <p class="panel-kicker" id="workspacePlaceholderKicker">Workspace tab</p>
+          <h2 id="workspacePlaceholderTitle">Feature tab</h2>
+          <p class="muted" id="workspacePlaceholderText">Feature details will appear here.</p>
+        </article>
+      </section>
 
       <main class="dashboard-grid">
         <section class="panel hero-panel wide-panel view-panel" data-section="dashboard">

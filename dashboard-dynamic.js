@@ -72,6 +72,7 @@ const defaultBoardItems = {
 const state = {
   currentRange: "weekly",
   currentView: "dashboard",
+  currentWorkspaceTabId: null,
   selectedMeetingId: null,
   editingScheduleId: null,
   editingHolidayId: null,
@@ -83,7 +84,60 @@ const state = {
   projects: [],
   schedules: [],
   finances: [],
-  authUser: null
+  authUser: null,
+  openWorkspaceTabs: {
+    schedules: [],
+    projects: [],
+    leave: [],
+    meetings: []
+  }
+};
+
+const workspaceDefinitions = {
+  schedules: {
+    base: {
+      id: "schedules-home",
+      label: "Schedules"
+    },
+    options: [
+      { id: "schedule-templates", label: "Templates", title: "Schedule templates", text: "Create reusable shift, routine, or sprint templates for the schedule workspace." },
+      { id: "schedule-automation", label: "Automation", title: "Schedule automation", text: "Add future automation rules such as recurring plans, reminders, and auto-fill schedule blocks." },
+      { id: "schedule-insights", label: "Insights", title: "Schedule insights", text: "Open a future analytics tab for schedule load, conflicts, and plan coverage." }
+    ]
+  },
+  projects: {
+    base: {
+      id: "projects-home",
+      label: "Projects"
+    },
+    options: [
+      { id: "project-finance", label: "Finance view", title: "Project finance workspace", text: "Open a dedicated finance-focused project tab with budgets, expenses, and approvals." },
+      { id: "project-risk", label: "Risk register", title: "Project risk register", text: "Track risk logs, owners, mitigation plans, and delivery escalations in a future tab." },
+      { id: "project-files", label: "Project files", title: "Project files", text: "Keep room for project documents, references, and attachments in a future workspace tab." }
+    ]
+  },
+  leave: {
+    base: {
+      id: "leave-home",
+      label: "Leave"
+    },
+    options: [
+      { id: "leave-policy", label: "Policy", title: "Leave policy tab", text: "Add leave policy definitions, rules, and carry-forward settings in a future tab." },
+      { id: "leave-requests", label: "Requests", title: "Leave requests", text: "Use this future tab for request queues, approvals, and review history." },
+      { id: "leave-calendar", label: "Calendar", title: "Leave calendar", text: "Open a future team leave calendar with conflicts and availability overlays." }
+    ]
+  },
+  meetings: {
+    base: {
+      id: "meetings-home",
+      label: "Meetings"
+    },
+    options: [
+      { id: "meeting-agendas", label: "Agendas", title: "Meeting agendas", text: "Keep agenda building, preparation lists, and time blocks in a future meeting tab." },
+      { id: "meeting-actions", label: "Action tracker", title: "Meeting action tracker", text: "Track action items, owners, and due dates in a dedicated future workspace tab." },
+      { id: "meeting-archive", label: "Archive", title: "Meeting archive", text: "Open a future archive tab for old meeting notes, summaries, and decisions." }
+    ]
+  }
 };
 
 const viewPanels = [...document.querySelectorAll(".view-panel")];
@@ -107,6 +161,15 @@ const sidebarSchedules = document.getElementById("sidebarSchedules");
 const currentUserLabel = document.getElementById("currentUserLabel");
 const logoutBtn = document.getElementById("logoutBtn");
 const modeButtons = [...document.querySelectorAll(".mode-pill")];
+const scopeButtons = [...document.querySelectorAll(".scope-chip")];
+const workspaceTabs = document.getElementById("workspaceTabs");
+const workspaceTabList = document.getElementById("workspaceTabList");
+const workspaceAddBtn = document.getElementById("workspaceAddBtn");
+const workspaceMenu = document.getElementById("workspaceMenu");
+const workspacePlaceholder = document.getElementById("workspacePlaceholder");
+const workspacePlaceholderKicker = document.getElementById("workspacePlaceholderKicker");
+const workspacePlaceholderTitle = document.getElementById("workspacePlaceholderTitle");
+const workspacePlaceholderText = document.getElementById("workspacePlaceholderText");
 const scheduleForm = document.getElementById("scheduleForm");
 const scheduleRangeInput = document.getElementById("scheduleRangeInput");
 const scheduleDayInput = document.getElementById("scheduleDayInput");
@@ -183,13 +246,85 @@ function updateDayOptions(range) {
   scheduleDayInput.innerHTML = boardLabels[range].map((day) => `<option value="${day}">${escapeHtml(day)}</option>`).join("");
 }
 
+function getWorkspaceDefinition(view) {
+  return workspaceDefinitions[view] || null;
+}
+
+function ensureWorkspaceState(view) {
+  const definition = getWorkspaceDefinition(view);
+  if (!definition) {
+    state.currentWorkspaceTabId = null;
+    return;
+  }
+
+  const openTabs = state.openWorkspaceTabs[view];
+  if (!openTabs.length) {
+    openTabs.push(definition.base.id);
+  }
+
+  if (!state.currentWorkspaceTabId || !openTabs.includes(state.currentWorkspaceTabId)) {
+    state.currentWorkspaceTabId = definition.base.id;
+  }
+}
+
+function isWorkspaceBaseTabActive() {
+  const definition = getWorkspaceDefinition(state.currentView);
+  return !definition || state.currentWorkspaceTabId === definition.base.id;
+}
+
+function syncViewPanels() {
+  const showDefaultPanels = state.currentView === "dashboard" || isWorkspaceBaseTabActive();
+  viewPanels.forEach((panel) => {
+    const views = (panel.dataset.section || "").split(" ");
+    const inView = views.includes(state.currentView);
+    panel.classList.toggle("is-hidden", !inView || !showDefaultPanels);
+  });
+}
+
+function renderWorkspaceTabs() {
+  const definition = getWorkspaceDefinition(state.currentView);
+  if (!definition) {
+    workspaceTabs.classList.add("hidden");
+    workspaceMenu.classList.add("hidden");
+    workspaceAddBtn.setAttribute("aria-expanded", "false");
+    workspaceTabList.innerHTML = "";
+    workspacePlaceholder.classList.add("hidden");
+    syncViewPanels();
+    return;
+  }
+
+  ensureWorkspaceState(state.currentView);
+  const openTabs = state.openWorkspaceTabs[state.currentView];
+  workspaceTabs.classList.remove("hidden");
+  workspaceTabList.innerHTML = openTabs.map((tabId) => {
+    const option = definition.options.find((item) => item.id === tabId);
+    const isBase = tabId === definition.base.id;
+    const label = isBase ? definition.base.label : option.label;
+    return `<button class="workspace-tab ${state.currentWorkspaceTabId === tabId ? "active" : ""}" type="button" data-workspace-tab="${tabId}">${escapeHtml(label)}${isBase ? "" : `<span class="workspace-tab-close" data-close-workspace-tab="${tabId}">x</span>`}</button>`;
+  }).join("");
+
+  const remainingOptions = definition.options.filter((option) => !openTabs.includes(option.id));
+  workspaceMenu.innerHTML = remainingOptions.length
+    ? remainingOptions.map((option) => `<button type="button" data-open-workspace-tab="${option.id}">${escapeHtml(option.label)}</button>`).join("")
+    : `<button type="button" disabled>All ${escapeHtml(definition.base.label.toLowerCase())} tabs are open</button>`;
+
+  if (isWorkspaceBaseTabActive()) {
+    workspacePlaceholder.classList.add("hidden");
+  } else {
+    const activeOption = definition.options.find((item) => item.id === state.currentWorkspaceTabId);
+    workspacePlaceholder.classList.remove("hidden");
+    workspacePlaceholderKicker.textContent = `${definition.base.label} tab`;
+    workspacePlaceholderTitle.textContent = activeOption.title;
+    workspacePlaceholderText.textContent = activeOption.text;
+  }
+
+  syncViewPanels();
+}
+
 function setActiveView(view) {
   state.currentView = view;
   navLinks.forEach((button) => button.classList.toggle("active", button.dataset.view === view));
-  viewPanels.forEach((panel) => {
-    const views = (panel.dataset.section || "").split(" ");
-    panel.classList.toggle("is-hidden", !views.includes(view));
-  });
+  renderWorkspaceTabs();
 }
 
 function renderHealth() {
@@ -342,6 +477,61 @@ modeButtons.forEach((button) => {
     renderDashboard();
     renderScheduleList();
   });
+});
+
+scopeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    scopeButtons.forEach((chip) => {
+      chip.classList.toggle("active", chip === button);
+      chip.setAttribute("aria-pressed", chip === button ? "true" : "false");
+    });
+  });
+});
+
+workspaceAddBtn.addEventListener("click", () => {
+  const shouldOpen = workspaceMenu.classList.contains("hidden");
+  workspaceMenu.classList.toggle("hidden", !shouldOpen);
+  workspaceAddBtn.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+});
+
+workspaceTabList.addEventListener("click", (event) => {
+  const closeButton = event.target.closest("[data-close-workspace-tab]");
+  if (closeButton) {
+    const tabId = closeButton.getAttribute("data-close-workspace-tab");
+    const openTabs = state.openWorkspaceTabs[state.currentView];
+    state.openWorkspaceTabs[state.currentView] = openTabs.filter((item) => item !== tabId);
+    if (state.currentWorkspaceTabId === tabId) {
+      state.currentWorkspaceTabId = workspaceDefinitions[state.currentView].base.id;
+    }
+    renderWorkspaceTabs();
+    return;
+  }
+
+  const tabButton = event.target.closest("[data-workspace-tab]");
+  if (!tabButton) return;
+  state.currentWorkspaceTabId = tabButton.getAttribute("data-workspace-tab");
+  renderWorkspaceTabs();
+});
+
+workspaceMenu.addEventListener("click", (event) => {
+  const optionButton = event.target.closest("[data-open-workspace-tab]");
+  if (!optionButton) return;
+  const tabId = optionButton.getAttribute("data-open-workspace-tab");
+  const openTabs = state.openWorkspaceTabs[state.currentView];
+  if (!openTabs.includes(tabId)) {
+    openTabs.push(tabId);
+  }
+  state.currentWorkspaceTabId = tabId;
+  workspaceMenu.classList.add("hidden");
+  workspaceAddBtn.setAttribute("aria-expanded", "false");
+  renderWorkspaceTabs();
+});
+
+document.addEventListener("click", (event) => {
+  if (workspaceMenu.classList.contains("hidden")) return;
+  if (workspaceTabs.contains(event.target)) return;
+  workspaceMenu.classList.add("hidden");
+  workspaceAddBtn.setAttribute("aria-expanded", "false");
 });
 
 scheduleRangeInput.addEventListener("change", () => updateDayOptions(scheduleRangeInput.value));

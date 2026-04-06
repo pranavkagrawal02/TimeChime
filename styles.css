@@ -95,6 +95,9 @@ button:active {
 
 .login-copy {
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(15, 139, 141, 0.12));
+  display: grid;
+  place-items: center;
+  text-align: center;
 }
 
 .login-copy h1,
@@ -123,7 +126,6 @@ button:active {
 }
 
 .login-points span,
-.scope-tags span,
 .hero-badges span,
 .health-chip {
   padding: 9px 12px;
@@ -182,6 +184,7 @@ button:active {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
+  align-items: start;
 }
 
 .sidebar {
@@ -193,6 +196,10 @@ button:active {
   background:
     radial-gradient(circle at top left, rgba(97, 177, 90, 0.16), transparent 26%),
     linear-gradient(180deg, var(--sidebar) 0%, #162135 100%);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .sidebar .eyebrow {
@@ -316,12 +323,178 @@ button:active {
 
 .scope-tags {
   margin-top: 14px;
+  align-items: center;
+}
+
+.scope-chip {
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(21, 35, 59, 0.18);
+  cursor: pointer;
+  opacity: 0.58;
+  filter: saturate(0.8);
+  box-shadow: 0 4px 0 rgba(13, 31, 79, 0.08);
+}
+
+.scope-chip.active {
+  opacity: 1;
+  filter: none;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 0 rgba(13, 31, 79, 0.16);
+}
+
+.scope-chip:hover {
+  opacity: 0.82;
+}
+
+.scope-chip.scope-chip-green {
+  background: var(--green);
+}
+
+.scope-chip.scope-chip-yellow {
+  background: var(--gold);
+  color: var(--ink);
+}
+
+.scope-chip.scope-chip-red {
+  background: var(--rose);
+}
+
+.scope-chip.active:not(.scope-chip-green):not(.scope-chip-yellow):not(.scope-chip-red) {
+  background: var(--blue);
+}
+
+.scope-chip.scope-chip-green:hover,
+.scope-chip.scope-chip-green:focus-visible {
+  background: #4f9b49;
+}
+
+.scope-chip.scope-chip-yellow:hover,
+.scope-chip.scope-chip-yellow:focus-visible {
+  background: #d49a12;
+}
+
+.scope-chip.scope-chip-red:hover,
+.scope-chip.scope-chip-red:focus-visible {
+  background: #d94a66;
 }
 
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 18px;
+}
+
+.workspace-tabs {
+  margin-bottom: 22px;
+}
+
+.workspace-tabbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow);
+}
+
+.workspace-tablist {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.workspace-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid rgba(21, 35, 59, 0.1);
+  border-radius: 18px 18px 10px 10px;
+  background: rgba(21, 35, 59, 0.06);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.workspace-tab.active {
+  background: linear-gradient(180deg, #ffffff 0%, #eef4ff 100%);
+  color: var(--ink);
+  border-color: rgba(37, 99, 235, 0.2);
+  box-shadow: 0 10px 18px rgba(37, 99, 235, 0.1);
+}
+
+.workspace-tab-close {
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(21, 35, 59, 0.08);
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.workspace-tabtools {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.workspace-add-btn {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 1.45rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.workspace-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 230px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(21, 35, 59, 0.08);
+  box-shadow: 0 18px 40px rgba(21, 35, 59, 0.16);
+  z-index: 30;
+}
+
+.workspace-menu button {
+  text-align: left;
+  border: 0;
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: rgba(21, 35, 59, 0.05);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.workspace-menu button:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.workspace-placeholder {
+  margin-top: 14px;
 }
 
 .panel {
@@ -734,14 +907,6 @@ button:active {
 }
 
 @media (max-width: 1220px) {
-  .app-shell {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    grid-template-rows: auto;
-  }
-
   .wide-panel,
   .status-panel,
   .schedule-panel,
@@ -786,5 +951,24 @@ button:active {
   .sidebar-user {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .workspace-tabbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .workspace-tabtools {
+    align-self: flex-end;
+  }
+
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+    overflow: visible;
   }
 }

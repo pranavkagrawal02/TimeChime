@@ -16,6 +16,39 @@ The repo is prepared for this architecture:
 - `PostgreSQL` for production data
 - `db.json` as the current local fallback datastore
 
+## Quick Start
+
+For a new local setup on Windows, run this from `D:\PranavData\scheduleTrackerProject`:
+
+```powershell
+npm install
+set PORT=3001
+npm start
+```
+
+Then open:
+
+```text
+http://127.0.0.1:3001
+```
+
+Login with:
+
+- Username: `admin`
+- Password: `admin`
+
+`PORT=3001` is the recommended local port because `3000` may already be in use on your machine.
+
+For now, if `DATABASE_URL` is not set, the app uses [db.json](/d:/PranavData/scheduleTrackerProject/db.json).
+
+Alternative if port `3000` is free:
+
+```powershell
+npm start
+```
+
+Then open `http://127.0.0.1:3000`.
+
 ## Current status
 
 Right now the app can run locally and is structured for later online deployment.
@@ -38,7 +71,7 @@ Right now the app can run locally and is structured for later online deployment.
 - Environment template: [.env.example](/d:/PranavData/scheduleTrackerProject/.env.example)
 - CI workflow: [.github/workflows/ci.yml](/d:/PranavData/scheduleTrackerProject/.github/workflows/ci.yml)
 
-## Local run
+## Local run details
 
 Install packages:
 
@@ -79,15 +112,12 @@ What `npm start` does:
 
 If `DATABASE_URL` is not set, the app uses `db.json`.
 
-## Default login
+Default local login:
 
 - Username: `admin`
 - Password: `admin`
 
-These can later be changed with:
-
-- `DEMO_ADMIN_USERNAME`
-- `DEMO_ADMIN_PASSWORD`
+These can later be changed with `DEMO_ADMIN_USERNAME` and `DEMO_ADMIN_PASSWORD`.
 
 ## Node version note
 
@@ -222,39 +252,6 @@ Basic flow:
 5. Set `DATABASE_URL` on Cloud Run
 
 Once `DATABASE_URL` is present, the backend automatically switches from `db.json` to PostgreSQL.
-
-## Windows quick start
-
-From `D:\PranavData\scheduleTrackerProject`:
-
-Run locally:
-
-```powershell
-set PORT=3001
-npm start
-```
-
-Deploy frontend:
-
-```powershell
-npm run prepare:public
-npx firebase-tools login
-npx firebase-tools projects:list
-npx firebase-tools use --add
-npx firebase-tools deploy --only hosting --project scheduletrackerproject
-```
-
-For this repo right now, the direct deploy command is:
-
-```powershell
-npx firebase-tools deploy --only hosting --project scheduletrackerproject
-```
-
-Using your alias also works:
-
-```powershell
-npx firebase-tools deploy --only hosting --project pka
-```
 
 ## CI
 

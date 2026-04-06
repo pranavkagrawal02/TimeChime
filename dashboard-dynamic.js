@@ -154,10 +154,12 @@ const holidayGrid = document.getElementById("holidayGrid");
 const barChart = document.getElementById("barChart");
 const riskHeadline = document.getElementById("riskHeadline");
 const riskText = document.getElementById("riskText");
-const serverStatus = document.getElementById("serverStatus");
-const sidebarUsers = document.getElementById("sidebarUsers");
-const sidebarProjects = document.getElementById("sidebarProjects");
-const sidebarSchedules = document.getElementById("sidebarSchedules");
+const upcomingTaskTitle = document.getElementById("upcomingTaskTitle");
+const upcomingTaskMeta = document.getElementById("upcomingTaskMeta");
+const upcomingMeetingTitle = document.getElementById("upcomingMeetingTitle");
+const upcomingMeetingMeta = document.getElementById("upcomingMeetingMeta");
+const upcomingMeetingCountdown = document.getElementById("upcomingMeetingCountdown");
+const upcomingMeetingCountdownMeta = document.getElementById("upcomingMeetingCountdownMeta");
 const currentUserLabel = document.getElementById("currentUserLabel");
 const logoutBtn = document.getElementById("logoutBtn");
 const modeButtons = [...document.querySelectorAll(".mode-pill")];
@@ -244,6 +246,106 @@ function formatMoney(amount) {
 
 function updateDayOptions(range) {
   scheduleDayInput.innerHTML = boardLabels[range].map((day) => `<option value="${day}">${escapeHtml(day)}</option>`).join("");
+}
+
+function parseClockTime(text) {
+  const match = String(text || "").match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) {
+    return null;
+  }
+
+  let hours = Number(match[1]) % 12;
+  const minutes = Number(match[2]);
+  if (match[3].toUpperCase() === "PM") {
+    hours += 12;
+  }
+  return { hours, minutes };
+}
+
+function nextWeekdayDate(now, weekdayName, fallbackTime) {
+  const weekdayMap = {
+    sunday: 0,
+    monday: 1,
+    tuesday: 2,
+    wednesday: 3,
+    thursday: 4,
+    friday: 5,
+    saturday: 6
+  };
+  const targetDay = weekdayMap[String(weekdayName || "").toLowerCase()];
+  if (targetDay === undefined) {
+    return null;
+  }
+
+  const next = new Date(now);
+  const currentDay = now.getDay();
+  let offset = (targetDay - currentDay + 7) % 7;
+  next.setDate(now.getDate() + offset);
+  next.setHours(fallbackTime.hours, fallbackTime.minutes, 0, 0);
+  if (next <= now) {
+    next.setDate(next.getDate() + 7);
+  }
+  return next;
+}
+
+function inferMeetingDate(meeting) {
+  const now = new Date();
+  const clockTime = parseClockTime(meeting.meta);
+  if (clockTime) {
+    const next = new Date(now);
+    next.setHours(clockTime.hours, clockTime.minutes, 0, 0);
+    if (next <= now) {
+      next.setDate(next.getDate() + 1);
+    }
+    return next;
+  }
+
+  const weekdayMatch = String(meeting.meta || "").match(/^(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b/i);
+  if (weekdayMatch) {
+    return nextWeekdayDate(now, weekdayMatch[1], { hours: 17, minutes: 0 });
+  }
+
+  return null;
+}
+
+function formatTimeDistance(targetDate) {
+  if (!targetDate) {
+    return "Time not set";
+  }
+
+  const diffMs = targetDate.getTime() - Date.now();
+  const totalMinutes = Math.max(0, Math.round(diffMs / 60000));
+  if (totalMinutes < 60) {
+    return `In ${totalMinutes} min`;
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (!minutes) {
+    return `In ${hours} hour${hours === 1 ? "" : "s"}`;
+  }
+  return `In ${hours}h ${minutes}m`;
+}
+
+function formatMeetingDate(targetDate) {
+  if (!targetDate) {
+    return "Add a meeting time to get a live countdown.";
+  }
+
+  return targetDate.toLocaleString("en-IN", {
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function pickUpcomingMeeting() {
+  const meetingsWithDates = state.meetings
+    .map((meeting) => ({ meeting, nextDate: inferMeetingDate(meeting) }))
+    .filter((item) => item.nextDate)
+    .sort((a, b) => a.nextDate - b.nextDate);
+
+  return meetingsWithDates[0] || null;
 }
 
 function getWorkspaceDefinition(view) {
@@ -432,11 +534,26 @@ function renderMeetings() {
 }
 
 function renderSidebar() {
-  sidebarUsers.textContent = String(state.users.length);
-  sidebarProjects.textContent = String(state.projects.length);
-  sidebarSchedules.textContent = String(state.schedules.length);
   currentUserLabel.textContent = state.authUser?.username || "admin";
   welcomeTitle.textContent = `Welcome, ${state.authUser?.username || "admin"}`;
+
+  const importantTask = state.todos.find((todo) => !todo.done) || state.todos[0] || null;
+  upcomingTaskTitle.textContent = importantTask ? importantTask.text : "No important task right now";
+  upcomingTaskMeta.textContent = importantTask
+    ? (importantTask.done ? "This task is already complete." : "First open task from your planner.")
+    : "Add a task to see it here.";
+
+  const firstMeeting = state.meetings[0] || null;
+  upcomingMeetingTitle.textContent = firstMeeting ? firstMeeting.title : "No meeting added";
+  upcomingMeetingMeta.textContent = firstMeeting ? firstMeeting.meta : "Create a meeting to see it here.";
+
+  const nextMeeting = pickUpcomingMeeting();
+  upcomingMeetingCountdown.textContent = nextMeeting
+    ? `${nextMeeting.meeting.title} - ${formatTimeDistance(nextMeeting.nextDate)}`
+    : "No timed meeting found";
+  upcomingMeetingCountdownMeta.textContent = nextMeeting
+    ? formatMeetingDate(nextMeeting.nextDate)
+    : "Meetings without a time will show after timing is added.";
 }
 
 function resetScheduleForm() {
@@ -767,9 +884,13 @@ async function init() {
   renderScheduleBoard();
   renderScheduleList();
   setActiveView("dashboard");
-  serverStatus.textContent = "Connected to the application backend. Records are loading from the active data source.";
 }
 
 init().catch((error) => {
-  serverStatus.textContent = `Backend connection failed: ${error.message}`;
+  upcomingTaskTitle.textContent = "Unable to load workspace";
+  upcomingTaskMeta.textContent = error.message;
+  upcomingMeetingTitle.textContent = "Unable to load meetings";
+  upcomingMeetingMeta.textContent = "Please refresh or restart the app.";
+  upcomingMeetingCountdown.textContent = "No upcoming data";
+  upcomingMeetingCountdownMeta.textContent = "Backend connection failed.";
 });

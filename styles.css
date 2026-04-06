@@ -245,27 +245,39 @@ button:active {
   line-height: 1.55;
 }
 
-.sidebar-stats {
+.sidebar-upcoming {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
-.sidebar-stats div {
-  padding: 12px;
-  border-radius: 16px;
+.upcoming-card {
+  padding: 14px;
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.06);
-  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.sidebar-stats strong {
+.upcoming-card strong {
   display: block;
-  font-size: 1.35rem;
+  font-size: 1rem;
+  line-height: 1.35;
+  color: #ffffff;
 }
 
-.sidebar-stats span {
-  font-size: 0.78rem;
-  color: #c4d0e3;
+.upcoming-label {
+  display: inline-block;
+  margin-bottom: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9bc9c9;
+}
+
+.upcoming-card .sidebar-note {
+  margin: 8px 0 0;
+  color: #d7e0ee;
+  font-size: 0.84rem;
 }
 
 .sidebar-user {

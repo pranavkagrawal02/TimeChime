@@ -55,6 +55,8 @@ Right now the app can run locally and is structured for later online deployment.
 
 - Local app: works through `server.js`
 - Frontend deploy folder: `public/`
+- Sidebar now shows an `Upcoming...` summary for task and meeting focus
+- Non-dashboard views now support browser-style workspace tabs with a `+` menu for future feature areas
 - Production-ready Firebase config: [firebase.json](/d:/PranavData/scheduleTrackerProject/firebase.json)
 - Production-ready container config: [Dockerfile](/d:/PranavData/scheduleTrackerProject/Dockerfile)
 - Database schema: [schema.sql](/d:/PranavData/scheduleTrackerProject/database/schema.sql)
@@ -70,6 +72,16 @@ Right now the app can run locally and is structured for later online deployment.
 - Firebase config: [firebase.json](/d:/PranavData/scheduleTrackerProject/firebase.json)
 - Environment template: [.env.example](/d:/PranavData/scheduleTrackerProject/.env.example)
 - CI workflow: [.github/workflows/ci.yml](/d:/PranavData/scheduleTrackerProject/.github/workflows/ci.yml)
+
+## Current interface notes
+
+- `Dashboard` keeps the main summary layout and top range controls
+- `Schedules`, `Projects`, `Leave`, and `Meetings` now have a workspace tab row
+- The `+` button in those non-dashboard views opens future-ready feature tabs
+- The left sidebar `Upcoming...` card shows:
+  - an important open task
+  - a meeting summary
+  - the nearest upcoming meeting countdown when a meeting time can be inferred
 
 ## Local run details
 

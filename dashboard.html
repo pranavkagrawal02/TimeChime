@@ -23,21 +23,23 @@
       </nav>
 
       <div class="sidebar-summary">
-        <p class="eyebrow">Workspace status</p>
-        <p class="sidebar-note" id="serverStatus">Connecting to workspace backend...</p>
-        <div class="sidebar-stats">
-          <div>
-            <strong id="sidebarUsers">0</strong>
-            <span>Users</span>
-          </div>
-          <div>
-            <strong id="sidebarProjects">0</strong>
-            <span>Projects</span>
-          </div>
-          <div>
-            <strong id="sidebarSchedules">0</strong>
-            <span>Schedules</span>
-          </div>
+        <p class="eyebrow">Upcoming...</p>
+        <div class="sidebar-upcoming">
+          <article class="upcoming-card">
+            <span class="upcoming-label">Important task</span>
+            <strong id="upcomingTaskTitle">Checking tasks...</strong>
+            <p class="sidebar-note" id="upcomingTaskMeta">Pulling the next open task from your planner.</p>
+          </article>
+          <article class="upcoming-card">
+            <span class="upcoming-label">Meeting</span>
+            <strong id="upcomingMeetingTitle">Checking meetings...</strong>
+            <p class="sidebar-note" id="upcomingMeetingMeta">Finding the best matching meeting from your workspace.</p>
+          </article>
+          <article class="upcoming-card">
+            <span class="upcoming-label">Upcoming meeting</span>
+            <strong id="upcomingMeetingCountdown">Calculating...</strong>
+            <p class="sidebar-note" id="upcomingMeetingCountdownMeta">Working out the next meeting time.</p>
+          </article>
         </div>
       </div>
 

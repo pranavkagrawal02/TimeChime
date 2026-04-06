@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schedule Tracker Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <p class="eyebrow">Control Center</p>
+        <h2>Schedule Tracker</h2>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-link active" type="button" data-view="dashboard">Dashboard</button>
+        <button class="nav-link" type="button" data-view="schedules">Schedules</button>
+        <button class="nav-link" type="button" data-view="projects">Projects</button>
+        <button class="nav-link" type="button" data-view="leave">Leave</button>
+        <button class="nav-link" type="button" data-view="meetings">Meetings</button>
+      </nav>
+
+      <div class="sidebar-summary">
+        <p class="eyebrow">Workspace status</p>
+        <p class="sidebar-note" id="serverStatus">Connecting to workspace backend...</p>
+        <div class="sidebar-stats">
+          <div>
+            <strong id="sidebarUsers">0</strong>
+            <span>Users</span>
+          </div>
+          <div>
+            <strong id="sidebarProjects">0</strong>
+            <span>Projects</span>
+          </div>
+          <div>
+            <strong id="sidebarSchedules">0</strong>
+            <span>Schedules</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-user">
+        <div>
+          <p class="eyebrow">Signed in</p>
+          <strong id="currentUserLabel">admin</strong>
+        </div>
+        <button id="logoutBtn" type="button">Logout</button>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Planning workspace</p>
+          <h1 id="welcomeTitle">Welcome, admin</h1>
+        </div>
+
+        <div class="topbar-actions">
+          <div class="mode-switch" role="tablist" aria-label="View range">
+            <button class="mode-pill" data-range="daily">Daily</button>
+            <button class="mode-pill active" data-range="weekly">Weekly</button>
+            <button class="mode-pill" data-range="monthly">Monthly</button>
+          </div>
+          <div class="scope-tags">
+            <span>Single User</span>
+            <span>Multi User</span>
+            <span>Corporate</span>
+            <span>Government</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard-grid">
+        <section class="panel hero-panel wide-panel view-panel" data-section="dashboard">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Workspace overview</p>
+              <h2>Track work, leave, meetings, and daily execution with cleaner navigation.</h2>
+            </div>
+          </div>
+          <div class="hero-banner">
+            <div>
+              <strong>Direct input is live</strong>
+              <p class="muted">You can now add users, projects, tasks, schedules, and leave records from the dashboard itself.</p>
+            </div>
+            <div class="hero-badges">
+              <span>Shared online API</span>
+              <span>Editable schedule board</span>
+              <span>Demo login flow</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel wide-panel view-panel" data-section="dashboard">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Work tree elements</p>
+              <h2>Tracking overview</h2>
+            </div>
+            <p class="muted">Progress, adherence, meetings, and leave visibility for the selected range.</p>
+          </div>
+          <div class="metric-grid" id="metricGrid"></div>
+        </section>
+
+        <section class="panel status-panel view-panel" data-section="dashboard">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">OKR Hub</p>
+              <h2>Project health</h2>
+            </div>
+          </div>
+          <div class="health-badges" id="healthBadges"></div>
+          <div class="risk-card">
+            <div>
+              <p class="panel-kicker">Priority signal</p>
+              <h3 id="riskHeadline">1 plan needs attention</h3>
+            </div>
+            <p id="riskText">Budget review for Civic Portal rollout is due tomorrow.</p>
+          </div>
+        </section>
+
+        <section class="panel wide-panel view-panel" data-section="dashboard">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Forecast vs capacity</p>
+              <h2>Schedule utilization</h2>
+            </div>
+            <p class="muted" id="capacityCaption">Using 78% of planned team capacity this week.</p>
+          </div>
+          <div class="capacity-card">
+            <div class="capacity-labels">
+              <span>Forecast versus available hours</span>
+              <strong id="capacityPercent">78%</strong>
+            </div>
+            <div class="capacity-bar">
+              <div class="capacity-fill" id="capacityFill"></div>
+            </div>
+            <div class="capacity-scale">
+              <span>0%</span>
+              <span>100%</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel schedule-panel wide-panel view-panel" data-section="dashboard schedules">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Schedule manager</p>
+              <h2>Add and edit schedule items</h2>
+            </div>
+            <p class="muted">Create daily, weekly, or monthly schedule blocks and place them directly on the board.</p>
+          </div>
+
+          <form class="stack-form" id="scheduleForm">
+            <div class="form-grid form-grid-three">
+              <select id="scheduleRangeInput">
+                <option value="daily">Daily</option>
+                <option value="weekly" selected>Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+              <select id="scheduleDayInput"></select>
+              <select id="scheduleColorInput">
+                <option value="#2563eb">Blue - Project</option>
+                <option value="#0f8b8d">Teal - Meeting</option>
+                <option value="#61b15a">Green - Task</option>
+                <option value="#e6a817">Gold - Leave</option>
+                <option value="#e85d75">Rose - Risk</option>
+                <option value="#6b7280">Gray - General</option>
+              </select>
+            </div>
+            <input id="scheduleTitleInput" type="text" placeholder="Schedule title" maxlength="80">
+            <input id="scheduleNoteInput" type="text" placeholder="Short note, time, or context" maxlength="100">
+            <div class="action-row">
+              <button type="submit" id="scheduleSubmitBtn">Add schedule</button>
+              <button type="button" class="ghost-btn" id="scheduleCancelBtn">Cancel edit</button>
+            </div>
+          </form>
+
+          <div class="schedule-board" id="scheduleBoard"></div>
+          <div class="record-list compact-list" id="scheduleList"></div>
+        </section>
+
+        <section class="panel holidays-panel view-panel" data-section="dashboard leave">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Leave control</p>
+              <h2>Holiday tracking</h2>
+            </div>
+            <p class="muted">Add new leave types or edit used and total balances.</p>
+          </div>
+
+          <form class="stack-form" id="holidayForm">
+            <input id="holidayNameInput" type="text" placeholder="Holiday type name" maxlength="60">
+            <div class="form-grid">
+              <input id="holidayUsedInput" type="number" min="0" placeholder="Used days">
+              <input id="holidayTotalInput" type="number" min="0" placeholder="Total days">
+            </div>
+            <div class="action-row">
+              <button type="submit" id="holidaySubmitBtn">Save leave type</button>
+              <button type="button" class="ghost-btn" id="holidayCancelBtn">Cancel edit</button>
+            </div>
+          </form>
+          <div class="holiday-grid" id="holidayGrid"></div>
+        </section>
+
+        <section class="panel analytics-panel view-panel" data-section="dashboard projects">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Activity analytics</p>
+              <h2>Daily hours by team</h2>
+            </div>
+            <p class="muted">Compares effort across core groups for the selected range.</p>
+          </div>
+          <svg class="bar-chart" id="barChart" viewBox="0 0 460 220" role="img" aria-label="Team hour chart"></svg>
+        </section>
+
+        <section class="panel team-panel view-panel" data-section="dashboard projects">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">User workspace</p>
+              <h2>People and roles</h2>
+            </div>
+            <p class="muted">Add single users, teams, departments, or office groups.</p>
+          </div>
+          <form class="stack-form" id="userForm">
+            <input id="userNameInput" type="text" placeholder="User or team name" maxlength="60">
+            <div class="form-grid">
+              <input id="userRoleInput" type="text" placeholder="Role or designation" maxlength="50">
+              <select id="userTypeInput">
+                <option value="Individual">Individual</option>
+                <option value="Team">Team</option>
+                <option value="Corporate">Corporate</option>
+                <option value="Government">Government</option>
+              </select>
+            </div>
+            <button type="submit">Add user</button>
+          </form>
+          <div class="record-list" id="userList"></div>
+        </section>
+
+        <section class="panel project-panel view-panel" data-section="dashboard projects">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Project register</p>
+              <h2>Projects and owners</h2>
+            </div>
+            <p class="muted">Track multiple projects for personal or shared delivery teams.</p>
+          </div>
+          <form class="stack-form" id="projectForm">
+            <input id="projectNameInput" type="text" placeholder="Project name" maxlength="80">
+            <div class="form-grid">
+              <select id="projectOwnerInput"></select>
+              <select id="projectStatusInput">
+                <option value="On track">On track</option>
+                <option value="At risk">At risk</option>
+                <option value="Off track">Off track</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+            <button type="submit">Add project</button>
+          </form>
+          <div class="record-list" id="projectList"></div>
+        </section>
+
+        <section class="panel finance-panel view-panel" data-section="dashboard projects">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Finance desk</p>
+              <h2>Project finance tracking</h2>
+            </div>
+            <p class="muted">Track budget, expense, grant, invoice, or payment progress for each project.</p>
+          </div>
+          <form class="stack-form" id="financeForm">
+            <div class="form-grid">
+              <select id="financeProjectInput"></select>
+              <select id="financeTypeInput">
+                <option value="Budget">Budget</option>
+                <option value="Expense">Expense</option>
+                <option value="Grant">Grant</option>
+                <option value="Invoice">Invoice</option>
+                <option value="Payment">Payment</option>
+              </select>
+            </div>
+            <div class="form-grid">
+              <input id="financeAmountInput" type="number" min="0" step="0.01" placeholder="Amount">
+              <select id="financeStatusInput">
+                <option value="Approved">Approved</option>
+                <option value="Pending">Pending</option>
+                <option value="Planned">Planned</option>
+                <option value="Paid">Paid</option>
+              </select>
+            </div>
+            <input id="financeNoteInput" type="text" placeholder="Finance note or purpose" maxlength="120">
+            <div class="action-row">
+              <button type="submit" id="financeSubmitBtn">Save finance record</button>
+              <button type="button" class="ghost-btn" id="financeCancelBtn">Cancel edit</button>
+            </div>
+          </form>
+          <div class="record-list" id="financeList"></div>
+        </section>
+
+        <section class="panel todo-panel view-panel" data-section="dashboard">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Action list</p>
+              <h2>To-do planner</h2>
+            </div>
+            <p class="muted">Create and complete tasks directly from the dashboard.</p>
+          </div>
+          <form id="todoForm" class="todo-form">
+            <input id="todoInput" type="text" placeholder="Add a task for today, week, or month" maxlength="90">
+            <button type="submit">Add task</button>
+          </form>
+          <ul class="todo-list" id="todoList"></ul>
+        </section>
+
+        <section class="panel meeting-panel view-panel" data-section="dashboard meetings">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Meeting desk</p>
+              <h2>Meetings and notes</h2>
+            </div>
+            <p class="muted">Select a meeting and edit notes from the right side.</p>
+          </div>
+          <div class="meeting-layout">
+            <div class="meeting-list" id="meetingList"></div>
+            <div class="meeting-note">
+              <h3 id="meetingTitle">No meeting selected</h3>
+              <p class="meeting-meta" id="meetingMeta">Choose any meeting from the list.</p>
+              <textarea id="meetingNotes" placeholder="Meeting notes will appear here. You can edit and save them."></textarea>
+              <button id="saveNotesBtn" type="button">Save notes</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="dashboard-dynamic.js?v=2"></script>
+</body>
+</html>

@@ -18,7 +18,7 @@
         <button class="nav-link" type="button" data-view="organization">Organization</button>
         <button class="nav-link" type="button" data-view="schedules">Schedules</button>
         <button class="nav-link" type="button" data-view="projects">Projects</button>
-        <button class="nav-link" type="button" data-view="leave">Leave</button>
+        <button class="nav-link" type="button" data-view="leave">Calender</button>
         <button class="nav-link" type="button" data-view="meetings">Meetings</button>
       </nav>
 
@@ -201,27 +201,95 @@
           <div class="org-tree" id="organizationTree"></div>
         </section>
 
-        <section class="panel holidays-panel view-panel" data-section="dashboard leave">
-          <div class="panel-heading">
-            <div>
-              <p class="panel-kicker">Leave control</p>
-              <h2>Holiday tracking</h2>
-            </div>
-            <p class="muted">Add new leave types or edit used and total balances.</p>
-          </div>
+        <section class="leave-layout view-panel" data-section="leave">
+          <div class="leave-grid" id="leaveGrid">
+            <article class="panel leave-card leave-card-calendar">
+              <div class="panel-heading">
+                <div>
+                  <p class="panel-kicker">Calender</p>
+                  <h2>Calender</h2>
+                </div>
+                <p class="muted" id="leaveCalendarMeta">Monthly planning overview.</p>
+              </div>
+              <div class="leave-calendar-month" id="leaveCalendarMonth"></div>
+              <div class="leave-calendar-weekdays" aria-hidden="true">
+                <span>Sun</span>
+                <span>Mon</span>
+                <span>Tue</span>
+                <span>Wed</span>
+                <span>Thu</span>
+                <span>Fri</span>
+                <span>Sat</span>
+              </div>
+              <div class="leave-calendar-board" id="leaveCalendarBoard"></div>
+            </article>
 
-          <form class="stack-form" id="holidayForm">
-            <input id="holidayNameInput" type="text" placeholder="Holiday type name" maxlength="60">
-            <div class="form-grid">
-              <input id="holidayUsedInput" type="number" min="0" placeholder="Used days">
-              <input id="holidayTotalInput" type="number" min="0" placeholder="Total days">
-            </div>
-            <div class="action-row">
-              <button type="submit" id="holidaySubmitBtn">Save leave type</button>
-              <button type="button" class="ghost-btn" id="holidayCancelBtn">Cancel edit</button>
-            </div>
-          </form>
-          <div class="holiday-grid" id="holidayGrid"></div>
+            <article class="panel leave-card leave-card-month">
+              <div class="panel-heading">
+                <div>
+                  <p class="panel-kicker">Monthly snapshot</p>
+                  <h2>Holiday (in that Month)</h2>
+                </div>
+              </div>
+              <div class="leave-summary-grid" id="holidayMonthSummary"></div>
+            </article>
+
+            <article class="panel leave-card leave-card-half">
+              <div class="panel-heading">
+                <div>
+                  <p class="panel-kicker">Leave type</p>
+                  <h2>CL Holiday</h2>
+                </div>
+              </div>
+              <div id="holidayClSummary"></div>
+            </article>
+
+            <article class="panel leave-card leave-card-half">
+              <div class="panel-heading">
+                <div>
+                  <p class="panel-kicker">Leave type</p>
+                  <h2>PL Holiday</h2>
+                </div>
+              </div>
+              <div id="holidayPlSummary"></div>
+            </article>
+
+            <article class="panel leave-card leave-card-half">
+              <div class="panel-heading">
+                <div>
+                  <p class="panel-kicker">Leave type</p>
+                  <h2>Unpaid Holiday</h2>
+                </div>
+              </div>
+              <div id="holidayUnpaidSummary"></div>
+            </article>
+
+            <article class="panel leave-card leave-card-half">
+              <div class="panel-heading">
+                <div>
+                  <p class="panel-kicker">Yearly overview</p>
+                  <h2>Holiday in year</h2>
+                </div>
+                <p class="muted">Add or update yearly holiday balances here.</p>
+              </div>
+
+              <div class="leave-summary-grid leave-year-grid" id="holidayYearSummary"></div>
+
+              <form class="stack-form" id="holidayForm">
+                <input id="holidayNameInput" type="text" placeholder="Holiday type name" maxlength="60">
+                <div class="form-grid">
+                  <input id="holidayUsedInput" type="number" min="0" placeholder="Used days">
+                  <input id="holidayTotalInput" type="number" min="0" placeholder="Total days">
+                </div>
+                <div class="action-row">
+                  <button type="submit" id="holidaySubmitBtn">Save holiday type</button>
+                  <button type="button" class="ghost-btn" id="holidayCancelBtn">Cancel edit</button>
+                </div>
+              </form>
+
+              <div class="holiday-grid" id="holidayGrid"></div>
+            </article>
+          </div>
         </section>
 
         <section class="panel analytics-panel view-panel" data-section="dashboard projects">

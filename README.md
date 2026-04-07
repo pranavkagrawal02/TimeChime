@@ -14,6 +14,7 @@ The app now supports two local storage modes:
 - frontend served locally by `server.js`
 - default data stored in local [db.json](/d:/PranavData/scheduleTrackerProject/db.json)
 - optional SQL Server storage for SSMS / SQL Server Express setups
+- refreshed dashboard UI with project watch cards, operational metrics, an organization view, and a multi-panel `Calender` workspace
 
 ## Quick Start
 
@@ -65,6 +66,7 @@ You can also create a local `.env` file from [.env.example](/d:/PranavData/sched
 ## Project structure
 
 - Frontend source: `index.html`, `dashboard.html`, `styles.css`, `login.js`, `dashboard-dynamic.js`
+- Shared image assets: `images/`
 - Frontend output for serving: `public/`
 - API server: [server.js](/d:/PranavData/scheduleTrackerProject/server.js)
 - Data store selector: [src/store/index.js](/d:/PranavData/scheduleTrackerProject/src/store/index.js)
@@ -139,6 +141,7 @@ In SSMS:
 11. In database role membership, tick:
     - `db_datareader`
     - `db_datawriter`
+    - `db_ddladmin` if you want the app to auto-create `dbo.schedules`
 12. Click `OK`
 
 Important:
@@ -147,12 +150,14 @@ Important:
 - `owner1 / owner123` is an application user stored in `dbo.users`
 - after starting the app with the SQL env vars, log into the website with `owner1 / owner123`
 - if SSMS connects with `Windows Authentication`, that does not automatically mean Node.js can use the same connection mode in this project
+- the current verified SQL error on this machine is `CREATE TABLE permission denied in database 'ScheduleTracker'`, so `scheduleapp` can connect but still needs DDL permission or a pre-created `dbo.schedules` table
 
 ## Notes
 
 - if SQL env vars are not set, the app uses `db.json`
 - if `SQL_SERVER` and `SQL_DATABASE` are set, the app uses SQL Server
 - the SQL store expects your SSMS database tables to exist
+- the dashboard now shows recent project cards, live workspace counts, a separate organization tab, and a 6-panel `Calender` workspace
 
 ## Node version
 

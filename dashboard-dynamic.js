@@ -159,12 +159,12 @@ const workspaceDefinitions = {
   leave: {
     base: {
       id: "leave-home",
-      label: "Leave"
+      label: "Calender"
     },
     options: [
       { id: "leave-policy", label: "Policy", title: "Leave policy tab", text: "Add leave policy definitions, rules, and carry-forward settings in a future tab." },
       { id: "leave-requests", label: "Requests", title: "Leave requests", text: "Use this future tab for request queues, approvals, and review history." },
-      { id: "leave-calendar", label: "Calendar", title: "Leave calendar", text: "Open a future team leave calendar with conflicts and availability overlays." }
+      { id: "leave-calendar", label: "Calender", title: "Leave calender", text: "Open a future team leave calender with conflicts and availability overlays." }
     ]
   },
   meetings: {
@@ -191,6 +191,15 @@ const capacityCaption = document.getElementById("capacityCaption");
 const scheduleBoard = document.getElementById("scheduleBoard");
 const scheduleList = document.getElementById("scheduleList");
 const holidayGrid = document.getElementById("holidayGrid");
+const leaveGrid = document.getElementById("leaveGrid");
+const leaveCalendarMonth = document.getElementById("leaveCalendarMonth");
+const leaveCalendarMeta = document.getElementById("leaveCalendarMeta");
+const leaveCalendarBoard = document.getElementById("leaveCalendarBoard");
+const holidayMonthSummary = document.getElementById("holidayMonthSummary");
+const holidayClSummary = document.getElementById("holidayClSummary");
+const holidayPlSummary = document.getElementById("holidayPlSummary");
+const holidayUnpaidSummary = document.getElementById("holidayUnpaidSummary");
+const holidayYearSummary = document.getElementById("holidayYearSummary");
 const barChart = document.getElementById("barChart");
 const upcomingTaskTitle = document.getElementById("upcomingTaskTitle");
 const upcomingTaskMeta = document.getElementById("upcomingTaskMeta");
@@ -282,6 +291,10 @@ function statusClass(status) {
 
 function formatMoney(amount) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(Number(amount || 0));
+}
+
+function formatMonthLabel(date) {
+  return date.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 }
 
 function updateDayOptions(range) {
@@ -631,6 +644,95 @@ function buildMetricFallback(errorMessage) {
   ];
 }
 
+function classifyHoliday(name) {
+  const value = String(name || "").trim().toLowerCase();
+  if (value.includes("cl") || value.includes("casual")) return "cl";
+  if (value.includes("pl") || value.includes("privilege")) return "pl";
+  if (value.includes("unpaid")) return "unpaid";
+  return "other";
+}
+
+function getHolidayCollections() {
+  const collections = { cl: null, pl: null, unpaid: null, other: [] };
+  state.holidays.forEach((holiday) => {
+    const key = classifyHoliday(holiday.name);
+    if (key === "other") {
+      collections.other.push(holiday);
+      return;
+    }
+    collections[key] = holiday;
+  });
+  return collections;
+}
+
+function buildHolidaySnapshot(holiday, fallbackName) {
+  const used = Number(holiday?.used || 0);
+  const total = Number(holiday?.total || 0);
+  return {
+    id: holiday?.id || null,
+    name: holiday?.name || fallbackName,
+    used,
+    total,
+    remaining: Math.max(total - used, 0),
+    configured: Boolean(holiday)
+  };
+}
+
+function renderLeaveCalendar() {
+  const today = new Date();
+  const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const firstDayIndex = currentMonth.getDay();
+  const totalDays = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const cells = [];
+
+  for (let i = 0; i < firstDayIndex; i += 1) {
+    cells.push('<div class="leave-calendar-cell is-empty" aria-hidden="true"></div>');
+  }
+
+  for (let day = 1; day <= totalDays; day += 1) {
+    const cellDate = new Date(today.getFullYear(), today.getMonth(), day);
+    const isToday = day === today.getDate();
+    const isWeekend = cellDate.getDay() === 0 || cellDate.getDay() === 6;
+    cells.push(`
+      <div class="leave-calendar-cell ${isToday ? "is-today" : ""} ${isWeekend ? "is-weekend" : ""}">
+        <span>${day}</span>
+      </div>
+    `);
+  }
+
+  leaveCalendarMonth.textContent = formatMonthLabel(currentMonth);
+  leaveCalendarMeta.textContent = `${totalDays} days in this month`;
+  leaveCalendarBoard.innerHTML = cells.join("");
+}
+
+function renderHolidayTypePanel(target, snapshot, fallbackName) {
+  const actionLabel = snapshot.configured ? "Edit" : "Create";
+  const actionAttr = snapshot.configured
+    ? `data-edit-holiday="${snapshot.id}"`
+    : `data-prefill-holiday="${fallbackName}"`;
+
+  target.innerHTML = `
+    <div class="leave-stat-grid">
+      <article class="leave-stat-card">
+        <span class="leave-stat-label">Used</span>
+        <strong>${snapshot.used}</strong>
+      </article>
+      <article class="leave-stat-card">
+        <span class="leave-stat-label">Total</span>
+        <strong>${snapshot.total}</strong>
+      </article>
+      <article class="leave-stat-card">
+        <span class="leave-stat-label">Remaining</span>
+        <strong>${snapshot.remaining}</strong>
+      </article>
+    </div>
+    <div class="leave-panel-footer">
+      <p class="muted">${snapshot.configured ? `${escapeHtml(snapshot.name)} balance is configured for the current year.` : `${escapeHtml(fallbackName)} is not configured yet.`}</p>
+      <button class="mini-btn" type="button" ${actionAttr}>${actionLabel}</button>
+    </div>
+  `;
+}
+
 function renderDashboard() {
   const data = dashboardData[state.currentRange];
   renderHeroProjects();
@@ -659,7 +761,64 @@ function renderScheduleList() {
 }
 
 function renderHolidays() {
-  holidayGrid.innerHTML = state.holidays.map((holiday) => `<article class="holiday-card"><div><strong>${escapeHtml(holiday.name)}</strong><span>${holiday.used} used out of ${holiday.total} days</span></div><div class="record-actions"><div class="holiday-balance">${Number(holiday.total) - Number(holiday.used)}</div><button class="mini-btn" type="button" data-edit-holiday="${holiday.id}">Edit</button></div></article>`).join("");
+  const collections = getHolidayCollections();
+  const clHoliday = buildHolidaySnapshot(collections.cl, "CL Holiday");
+  const plHoliday = buildHolidaySnapshot(collections.pl, "PL Holiday");
+  const unpaidHoliday = buildHolidaySnapshot(collections.unpaid, "Unpaid Holiday");
+  const totalUsed = state.holidays.reduce((sum, holiday) => sum + Number(holiday.used || 0), 0);
+  const totalDays = state.holidays.reduce((sum, holiday) => sum + Number(holiday.total || 0), 0);
+  const today = new Date();
+  const configuredNames = state.holidays.length
+    ? state.holidays.map((holiday) => holiday.name).join(", ")
+    : "No holiday types configured yet";
+
+  renderLeaveCalendar();
+
+  holidayMonthSummary.innerHTML = `
+    <article class="leave-stat-card">
+      <span class="leave-stat-label">Month</span>
+      <strong>${today.toLocaleDateString("en-IN", { month: "short" })}</strong>
+    </article>
+    <article class="leave-stat-card">
+      <span class="leave-stat-label">Types</span>
+      <strong>${state.holidays.length}</strong>
+    </article>
+    <article class="leave-stat-card">
+      <span class="leave-stat-label">Available</span>
+      <strong>${Math.max(totalDays - totalUsed, 0)}</strong>
+    </article>
+    <article class="leave-note-card">
+      <span class="leave-stat-label">Snapshot</span>
+      <p>${escapeHtml(configuredNames)}</p>
+    </article>
+  `;
+
+  renderHolidayTypePanel(holidayClSummary, clHoliday, "CL Holiday");
+  renderHolidayTypePanel(holidayPlSummary, plHoliday, "PL Holiday");
+  renderHolidayTypePanel(holidayUnpaidSummary, unpaidHoliday, "Unpaid Holiday");
+
+  holidayYearSummary.innerHTML = `
+    <article class="leave-stat-card">
+      <span class="leave-stat-label">Holiday types</span>
+      <strong>${state.holidays.length}</strong>
+    </article>
+    <article class="leave-stat-card">
+      <span class="leave-stat-label">Used in year</span>
+      <strong>${totalUsed}</strong>
+    </article>
+    <article class="leave-stat-card">
+      <span class="leave-stat-label">Total in year</span>
+      <strong>${totalDays}</strong>
+    </article>
+    <article class="leave-stat-card">
+      <span class="leave-stat-label">Remaining</span>
+      <strong>${Math.max(totalDays - totalUsed, 0)}</strong>
+    </article>
+  `;
+
+  holidayGrid.innerHTML = state.holidays.length
+    ? state.holidays.map((holiday) => `<article class="holiday-card"><div><strong>${escapeHtml(holiday.name)}</strong><span>${holiday.used} used out of ${holiday.total} days</span></div><div class="record-actions"><div class="holiday-balance">${Math.max(Number(holiday.total) - Number(holiday.used), 0)}</div><button class="mini-btn" type="button" data-edit-holiday="${holiday.id}">Edit</button></div></article>`).join("")
+    : `<article class="holiday-card"><div><strong>No holiday types yet</strong><span>Create CL, PL, Unpaid, or any other yearly balance below.</span></div><div class="holiday-balance">0</div></article>`;
 }
 
 function renderUsers() {
@@ -732,7 +891,7 @@ function resetScheduleForm() {
 
 function resetHolidayForm() {
   state.editingHolidayId = null;
-  holidaySubmitBtn.textContent = "Save leave type";
+  holidaySubmitBtn.textContent = "Save holiday type";
   holidayForm.reset();
 }
 
@@ -890,13 +1049,20 @@ holidayForm.addEventListener("submit", async (event) => {
 
 holidayCancelBtn.addEventListener("click", resetHolidayForm);
 
-holidayGrid.addEventListener("click", (event) => {
+leaveGrid.addEventListener("click", (event) => {
+  const prefillName = event.target.getAttribute("data-prefill-holiday");
+  if (prefillName) {
+    resetHolidayForm();
+    holidayNameInput.value = prefillName;
+    return;
+  }
+
   const editId = event.target.getAttribute("data-edit-holiday");
   if (!editId) return;
   const holiday = state.holidays.find((item) => item.id === Number(editId));
   if (!holiday) return;
   state.editingHolidayId = holiday.id;
-  holidaySubmitBtn.textContent = "Update leave type";
+  holidaySubmitBtn.textContent = "Update holiday type";
   holidayNameInput.value = holiday.name;
   holidayUsedInput.value = holiday.used;
   holidayTotalInput.value = holiday.total;
@@ -1056,6 +1222,7 @@ async function init() {
 init().catch((error) => {
   renderOrganization();
   renderMetricGrid(buildMetricFallback(error.message));
+  renderHolidays();
   upcomingTaskTitle.textContent = "Unable to load workspace";
   upcomingTaskMeta.textContent = error.message;
   upcomingMeetingTitle.textContent = "Unable to load meetings";

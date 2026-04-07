@@ -36,17 +36,29 @@ Current Data Setup
   - SQL login: `scheduleapp`
   - SQL password: `Schedule@123` (or the user-chosen replacement)
 - Current blocker found on this machine:
-  - `SQLEXPRESS` is set to `LoginMode = 1` which means Windows Authentication only
-  - app login for SQL user `scheduleapp` cannot work until mixed mode is enabled and SQL Server is restarted
+  - the app now reaches SQL Server successfully with `scheduleapp`
+  - the first `/api/bootstrap` call fails with: `CREATE TABLE permission denied in database 'ScheduleTracker'`
+  - `scheduleapp` needs `db_ddladmin`, or `dbo.schedules` must be created manually by an admin user
 
 Current Product State
 ---------------------
 - Login page works.
-- Left side of login page now only shows: Welcome
+- Left side of login page now shows the NIELIT image instead of the old text-only welcome block.
 - Dashboard layout is active.
 - Dashboard top area stays in its original compact layout.
+- Dashboard hero area now shows recent project cards with ownership and status.
+- Dashboard metrics now show live workspace counts instead of the old gauge widgets.
+- A separate Organization view now renders the current reporting structure.
+- The old Leave section is now labeled `Calender`.
+- The `Calender` workspace now has 6 components:
+  - `Calender`
+  - `Holiday (in that Month)`
+  - `CL Holiday`
+  - `PL Holiday`
+  - `Unpaid Holiday`
+  - `Holiday in year`
 - Non-dashboard sections have a browser-like workspace tab row.
-- Schedules, Projects, Leave, and Meetings support a + button for future tabs.
+- Schedules, Projects, Calender, and Meetings support a + button for future tabs.
 - Extra non-dashboard tabs currently open placeholder workspace panels.
 - Sidebar now shows an Upcoming... card instead of the old status card.
 - Upcoming card shows:
@@ -68,14 +80,18 @@ Recent Completed Work
 - Documented SQL login creation in SSMS for `scheduleapp`.
 - Confirmed current SQL connection issue is auth mode mismatch, not a JavaScript syntax error.
 - Added automatic `.env` loading so SQL config does not have to be re-entered in every terminal.
+- Refreshed the login and dashboard UI with image assets, project watch cards, operational metrics, and an organization chart.
+- Added image sync support so `images/` is copied into `public/` during startup.
+- Rebuilt the leave workspace into a 6-panel `Calender` layout with the requested 2/3 + 1/3 then half-width rows.
+- Verified that SQL startup succeeds but `/api/bootstrap` still fails because `scheduleapp` lacks table creation permission.
 
 Latest Git Status Reference
 ---------------------------
 Recent pushed commit:
-- d4bfb90  Add upcoming sidebar summary and document workspace tabs
+- 5c62a7d  Add SQL Server support and refresh dashboard
 
 Earlier important commit:
-- 31b610d  Refine dashboard workspace tabs and update docs
+- 4ffc9b8  Simplify app to local JSON workflow
 
 What To Tell Codex Next Time
 ----------------------------
@@ -85,14 +101,28 @@ Suggested summary:
 The app can now run either on db.json or local SQL Server.
 Do not change dashboard top layout unless I ask.
 Current focus is SQL Server connection and local feature work.
-Check whether SQLEXPRESS mixed mode has been enabled before testing scheduleapp again."
+Check whether `scheduleapp` has `CREATE TABLE` permission or whether `dbo.schedules` has been created before testing the SQL flow again."
 
 Open Items / Next Ideas
 -----------------------
 - Add true starred or important task support instead of using first open task.
 - Turn non-dashboard placeholder tabs into real feature tabs.
 - Expand schedule-related sub-tabs from the + menu.
-- Finish validating SQL Server login and end-to-end app login flow.
+- Finish validating SQL Server permissions and end-to-end app login flow.
+
+Latest Documentation Update
+---------------------------
+Date: 2026-04-07
+What changed:
+- Updated README to mention the `Calender` workspace and the verified SQL permission blocker.
+- Updated PROJECT_HISTORY to reflect the current `Calender` layout and the `CREATE TABLE permission denied` SQL issue.
+Files touched:
+- README.md
+- PROJECT_HISTORY.txt
+Git commit:
+- working tree only (not committed yet)
+Next step:
+- Commit and push the documentation update if needed.
 
 Update Log Template
 -------------------

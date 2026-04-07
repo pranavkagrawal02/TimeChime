@@ -532,6 +532,32 @@ button:active {
   margin-top: 14px;
 }
 
+.leave-layout {
+  grid-column: span 12;
+}
+
+.leave-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.leave-card {
+  min-width: 0;
+}
+
+.leave-card-calendar {
+  grid-column: span 8;
+}
+
+.leave-card-month {
+  grid-column: span 4;
+}
+
+.leave-card-half {
+  grid-column: span 6;
+}
+
 .panel {
   padding: 22px;
   border-radius: 28px;
@@ -763,6 +789,111 @@ button:active {
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 10px;
   margin-top: 18px;
+}
+
+.leave-calendar-month {
+  margin-bottom: 14px;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.leave-calendar-weekdays,
+.leave-calendar-board {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.leave-calendar-weekdays {
+  margin-bottom: 10px;
+}
+
+.leave-calendar-weekdays span {
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.leave-calendar-cell {
+  min-height: 78px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(21, 35, 59, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  font-weight: 700;
+}
+
+.leave-calendar-cell.is-empty {
+  background: rgba(21, 35, 59, 0.04);
+  border-style: dashed;
+}
+
+.leave-calendar-cell.is-weekend {
+  background: linear-gradient(180deg, rgba(230, 168, 23, 0.1), rgba(255, 255, 255, 0.8));
+}
+
+.leave-calendar-cell.is-today {
+  border-color: rgba(37, 99, 235, 0.35);
+  box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.leave-summary-grid,
+.leave-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.leave-year-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
+
+.leave-stat-card,
+.leave-note-card {
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(21, 35, 59, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.leave-stat-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: clamp(1.4rem, 2.3vw, 2rem);
+  line-height: 1;
+}
+
+.leave-stat-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--teal);
+}
+
+.leave-note-card {
+  grid-column: 1 / -1;
+}
+
+.leave-note-card p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.leave-panel-footer {
+  margin-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
 }
 
 .day-column {
@@ -1096,7 +1227,8 @@ button:active {
   .team-panel,
   .project-panel,
   .todo-panel,
-  .meeting-panel {
+  .meeting-panel,
+  .leave-layout {
     grid-column: span 12;
   }
 
@@ -1121,8 +1253,21 @@ button:active {
   .metric-grid,
   .schedule-board,
   .form-grid,
-  .form-grid-three {
+  .form-grid-three,
+  .leave-summary-grid,
+  .leave-stat-grid,
+  .leave-year-grid {
     grid-template-columns: 1fr;
+  }
+
+  .leave-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .leave-card-calendar,
+  .leave-card-month,
+  .leave-card-half {
+    grid-column: span 1;
   }
 
   .org-node-children {

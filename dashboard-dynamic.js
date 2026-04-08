@@ -114,10 +114,13 @@ const state = {
   currentView: "dashboard",
   currentWorkspaceTabId: null,
   selectedMeetingId: null,
+  editingMeetingId: null,
   editingScheduleId: null,
   editingHolidayId: null,
   editingFinanceId: null,
   holidays: [],
+  publicHolidays: [],
+  leaveEvents: [],
   meetings: [],
   todos: [],
   users: [],
@@ -125,6 +128,7 @@ const state = {
   schedules: [],
   finances: [],
   authUser: null,
+  calendarCursor: new Date(),
   openWorkspaceTabs: {
     schedules: [],
     projects: [],
@@ -155,34 +159,13 @@ const workspaceDefinitions = {
       { id: "project-risk", label: "Risk register", title: "Project risk register", text: "Track risk logs, owners, mitigation plans, and delivery escalations in a future tab." },
       { id: "project-files", label: "Project files", title: "Project files", text: "Keep room for project documents, references, and attachments in a future workspace tab." }
     ]
-  },
-  leave: {
-    base: {
-      id: "leave-home",
-      label: "Calender"
-    },
-    options: [
-      { id: "leave-policy", label: "Policy", title: "Leave policy tab", text: "Add leave policy definitions, rules, and carry-forward settings in a future tab." },
-      { id: "leave-requests", label: "Requests", title: "Leave requests", text: "Use this future tab for request queues, approvals, and review history." },
-      { id: "leave-calendar", label: "Calender", title: "Leave calender", text: "Open a future team leave calender with conflicts and availability overlays." }
-    ]
-  },
-  meetings: {
-    base: {
-      id: "meetings-home",
-      label: "Meetings"
-    },
-    options: [
-      { id: "meeting-agendas", label: "Agendas", title: "Meeting agendas", text: "Keep agenda building, preparation lists, and time blocks in a future meeting tab." },
-      { id: "meeting-actions", label: "Action tracker", title: "Meeting action tracker", text: "Track action items, owners, and due dates in a dedicated future workspace tab." },
-      { id: "meeting-archive", label: "Archive", title: "Meeting archive", text: "Open a future archive tab for old meeting notes, summaries, and decisions." }
-    ]
   }
 };
 
 const viewPanels = [...document.querySelectorAll(".view-panel")];
 const navLinks = [...document.querySelectorAll(".nav-link")];
 const welcomeTitle = document.getElementById("welcomeTitle");
+const topbarModeSwitch = document.getElementById("topbarModeSwitch");
 const metricGrid = document.getElementById("metricGrid");
 const projectStatusList = document.getElementById("projectStatusList");
 const capacityFill = document.getElementById("capacityFill");
@@ -195,6 +178,8 @@ const leaveGrid = document.getElementById("leaveGrid");
 const leaveCalendarMonth = document.getElementById("leaveCalendarMonth");
 const leaveCalendarMeta = document.getElementById("leaveCalendarMeta");
 const leaveCalendarBoard = document.getElementById("leaveCalendarBoard");
+const leaveCalendarPrevBtn = document.getElementById("leaveCalendarPrevBtn");
+const leaveCalendarNextBtn = document.getElementById("leaveCalendarNextBtn");
 const holidayMonthSummary = document.getElementById("holidayMonthSummary");
 const holidayClSummary = document.getElementById("holidayClSummary");
 const holidayPlSummary = document.getElementById("holidayPlSummary");
@@ -210,7 +195,6 @@ const upcomingMeetingCountdownMeta = document.getElementById("upcomingMeetingCou
 const currentUserLabel = document.getElementById("currentUserLabel");
 const logoutBtn = document.getElementById("logoutBtn");
 const modeButtons = [...document.querySelectorAll(".mode-pill")];
-const scopeButtons = [...document.querySelectorAll(".scope-chip")];
 const heroProjectList = document.getElementById("heroProjectList");
 const organizationTree = document.getElementById("organizationTree");
 const workspaceTabs = document.getElementById("workspaceTabs");
@@ -231,8 +215,7 @@ const scheduleSubmitBtn = document.getElementById("scheduleSubmitBtn");
 const scheduleCancelBtn = document.getElementById("scheduleCancelBtn");
 const holidayForm = document.getElementById("holidayForm");
 const holidayNameInput = document.getElementById("holidayNameInput");
-const holidayUsedInput = document.getElementById("holidayUsedInput");
-const holidayTotalInput = document.getElementById("holidayTotalInput");
+const holidayDateInput = document.getElementById("holidayDateInput");
 const holidaySubmitBtn = document.getElementById("holidaySubmitBtn");
 const holidayCancelBtn = document.getElementById("holidayCancelBtn");
 const userForm = document.getElementById("userForm");
@@ -257,11 +240,25 @@ const financeList = document.getElementById("financeList");
 const todoForm = document.getElementById("todoForm");
 const todoInput = document.getElementById("todoInput");
 const todoList = document.getElementById("todoList");
-const meetingList = document.getElementById("meetingList");
-const meetingTitle = document.getElementById("meetingTitle");
+const meetingForm = document.getElementById("meetingForm");
+const meetingTitleInput = document.getElementById("meetingTitleInput");
+const meetingDateInput = document.getElementById("meetingDateInput");
+const meetingLocationInput = document.getElementById("meetingLocationInput");
+const meetingStartTimeInput = document.getElementById("meetingStartTimeInput");
+const meetingEndTimeInput = document.getElementById("meetingEndTimeInput");
+const meetingLinkInput = document.getElementById("meetingLinkInput");
+const meetingSubmitBtn = document.getElementById("meetingSubmitBtn");
+const meetingCancelBtn = document.getElementById("meetingCancelBtn");
+const meetingUpcomingList = document.getElementById("meetingUpcomingList");
+const meetingHistoryList = document.getElementById("meetingHistoryList");
+const meetingSelectInput = document.getElementById("meetingSelectInput");
 const meetingMeta = document.getElementById("meetingMeta");
+const meetingLocationMeta = document.getElementById("meetingLocationMeta");
+const meetingLinkMeta = document.getElementById("meetingLinkMeta");
+const meetingSummary = document.getElementById("meetingSummary");
 const meetingNotes = document.getElementById("meetingNotes");
 const saveNotesBtn = document.getElementById("saveNotesBtn");
+const deleteMeetingBtn = document.getElementById("deleteMeetingBtn");
 
 function escapeHtml(value) {
   return String(value)
@@ -319,6 +316,115 @@ function formatMonthLabel(date) {
   return date.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 }
 
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function formatDateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function classifyLeaveType(type) {
+  const normalized = String(type || "").trim().toUpperCase();
+  if (normalized === "CL") return "cl";
+  if (normalized === "PL") return "pl";
+  if (normalized === "UNPAID") return "unpaid";
+  return "other";
+}
+
+function clampCalendarCursor(date) {
+  const minDate = new Date(2000, 0, 1);
+  const maxDate = new Date(2100, 11, 1);
+  if (date < minDate) return minDate;
+  if (date > maxDate) return maxDate;
+  return startOfMonth(date);
+}
+
+function parseIsoDate(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDisplayDateTime(value) {
+  const date = parseIsoDate(value);
+  if (!date) return "";
+  return date.toLocaleString("en-IN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  });
+}
+
+function toMeridiemTime(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const meridiemMatch = text.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (meridiemMatch) {
+    const normalizedHour = String(Number(meridiemMatch[1]) || 0).padStart(2, "0");
+    return `${normalizedHour}:${meridiemMatch[2]} ${meridiemMatch[3].toUpperCase()}`;
+  }
+  const match = text.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return text;
+  let hours = Number(match[1]);
+  const minutes = match[2];
+  const suffix = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+  return `${String(hours).padStart(2, "0")}:${minutes} ${suffix}`;
+}
+
+function toTwentyFourHourTime(value) {
+  const text = String(value || "").trim().toUpperCase();
+  if (!text) return "";
+  const meridiemMatch = text.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
+  if (meridiemMatch) {
+    let hours = Number(meridiemMatch[1]);
+    const minutes = meridiemMatch[2];
+    if (hours < 1 || hours > 12) return "";
+    if (meridiemMatch[3] === "AM") {
+      hours = hours === 12 ? 0 : hours;
+    } else {
+      hours = hours === 12 ? 12 : hours + 12;
+    }
+    return `${String(hours).padStart(2, "0")}:${minutes}`;
+  }
+  const match = text.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return "";
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return "";
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function normalizeMeetingLink(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const normalizedSlashes = text
+    .replace(/^https:\\\\+/i, "https://")
+    .replace(/^http:\\\\+/i, "http://")
+    .replace(/^https:\/(?!\/)/i, "https://")
+    .replace(/^http:\/(?!\/)/i, "http://");
+  if (/^https?:\/\//i.test(normalizedSlashes)) {
+    return normalizedSlashes;
+  }
+  return `https://${normalizedSlashes}`;
+}
+
+function buildMeetingDateTime(dateValue, timeValue) {
+  if (!dateValue || !timeValue) return null;
+  return parseIsoDate(`${dateValue}T${timeValue}:00`);
+}
+
+function meetingSortValue(meeting) {
+  return inferMeetingDate(meeting)?.getTime() || Number.MAX_SAFE_INTEGER;
+}
+
+function sortMeetings(meetings) {
+  return [...meetings].sort((a, b) => meetingSortValue(a) - meetingSortValue(b) || String(a.title).localeCompare(String(b.title)));
+}
+
 function updateDayOptions(range) {
   scheduleDayInput.innerHTML = boardLabels[range].map((day) => `<option value="${day}">${escapeHtml(day)}</option>`).join("");
 }
@@ -364,6 +470,21 @@ function nextWeekdayDate(now, weekdayName, fallbackTime) {
 }
 
 function inferMeetingDate(meeting) {
+  if (meeting?.startsAt) {
+    const startsAt = parseIsoDate(meeting.startsAt);
+    if (startsAt) {
+      return startsAt;
+    }
+  }
+
+  if (meeting?.date && meeting?.startTime) {
+    const normalizedTime = toTwentyFourHourTime(meeting.startTime) || formatLocalTime(meeting.startTime);
+    const combined = parseIsoDate(`${meeting.date}T${normalizedTime || "00:00"}:00`);
+    if (combined) {
+      return combined;
+    }
+  }
+
   const now = new Date();
   const clockTime = parseClockTime(meeting.meta);
   if (clockTime) {
@@ -417,10 +538,13 @@ function formatMeetingDate(targetDate) {
 function pickUpcomingMeeting() {
   const meetingsWithDates = state.meetings
     .map((meeting) => ({ meeting, nextDate: inferMeetingDate(meeting) }))
-    .filter((item) => item.nextDate)
+    .filter((item) => item.nextDate && item.nextDate.getTime() >= Date.now())
     .sort((a, b) => a.nextDate - b.nextDate);
 
-  return meetingsWithDates[0] || null;
+  return meetingsWithDates[0] || state.meetings
+    .map((meeting) => ({ meeting, nextDate: inferMeetingDate(meeting) }))
+    .filter((item) => item.nextDate)
+    .sort((a, b) => a.nextDate - b.nextDate)[0] || null;
 }
 
 function getWorkspaceDefinition(view) {
@@ -513,6 +637,7 @@ function renderWorkspaceTabs() {
 function setActiveView(view) {
   state.currentView = view;
   navLinks.forEach((button) => button.classList.toggle("active", button.dataset.view === view));
+  topbarModeSwitch?.classList.toggle("hidden", view !== "dashboard");
   renderWorkspaceTabs();
 }
 
@@ -726,15 +851,58 @@ function buildHolidaySnapshot(holiday, fallbackName) {
     used,
     total,
     remaining: Math.max(total - used, 0),
-    configured: Boolean(holiday)
+    configured: Boolean(holiday),
+    editable: holiday?.editable !== false
   };
+}
+
+function formatHolidayDateLabel(holiday) {
+  if (!holiday?.holidayDate) return "";
+  const date = new Date(holiday.holidayDate);
+  if (Number.isNaN(date.getTime())) return holiday.holidayDate;
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
+}
+
+function getCurrentYearPublicHolidays() {
+  const today = state.calendarCursor || new Date();
+  return state.publicHolidays
+    .filter((holiday) => Number(holiday.year) === today.getFullYear())
+    .sort((a, b) => String(a.holidayDate).localeCompare(String(b.holidayDate)));
 }
 
 function renderLeaveCalendar() {
   const today = new Date();
-  const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const currentMonth = clampCalendarCursor(state.calendarCursor || today);
   const firstDayIndex = currentMonth.getDay();
-  const totalDays = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const totalDays = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+  const holidaysByDay = new Map();
+  const leaveEventsByDay = new Map();
+  state.publicHolidays
+    .filter((holiday) => Number(holiday.year) === currentMonth.getFullYear() && String(holiday.month) === currentMonth.toLocaleDateString("en-US", { month: "long" }))
+    .forEach((holiday) => {
+      const list = holidaysByDay.get(Number(holiday.date)) || [];
+      list.push(holiday.name);
+      holidaysByDay.set(Number(holiday.date), list);
+    });
+
+  state.leaveEvents.forEach((leaveEvent) => {
+    const startDate = new Date(leaveEvent.startDate);
+    const endDate = new Date(leaveEvent.endDate);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return;
+    for (let cursor = new Date(startDate); cursor <= endDate; cursor.setDate(cursor.getDate() + 1)) {
+      if (cursor.getFullYear() !== currentMonth.getFullYear() || cursor.getMonth() !== currentMonth.getMonth()) {
+        continue;
+      }
+      const day = cursor.getDate();
+      const list = leaveEventsByDay.get(day) || [];
+      list.push(leaveEvent);
+      leaveEventsByDay.set(day, list);
+    }
+  });
   const cells = [];
 
   for (let i = 0; i < firstDayIndex; i += 1) {
@@ -742,11 +910,20 @@ function renderLeaveCalendar() {
   }
 
   for (let day = 1; day <= totalDays; day += 1) {
-    const cellDate = new Date(today.getFullYear(), today.getMonth(), day);
-    const isToday = day === today.getDate();
-    const isWeekend = cellDate.getDay() === 0 || cellDate.getDay() === 6;
+    const cellDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    const isToday = day === today.getDate() && currentMonth.getMonth() === today.getMonth() && currentMonth.getFullYear() === today.getFullYear();
+    const isSunday = cellDate.getDay() === 0;
+    const isSaturday = cellDate.getDay() === 6;
+    const isWeekend = isSunday || isSaturday;
+    const holidayNames = holidaysByDay.get(day) || [];
+    const leaveEntries = leaveEventsByDay.get(day) || [];
+    const leaveClass = leaveEntries.length ? ` has-leave leave-${classifyLeaveType(leaveEntries[0].type)}` : "";
     cells.push(`
-      <div class="leave-calendar-cell ${isToday ? "is-today" : ""} ${isWeekend ? "is-weekend" : ""}">
+      <div class="leave-calendar-cell ${isToday ? "is-today" : ""} ${isWeekend ? "is-weekend" : ""} ${isSunday ? "is-sunday" : ""} ${isSaturday ? "is-saturday" : ""}${leaveClass}">
+        <div class="leave-calendar-notes">
+          ${holidayNames.length ? `<small class="holiday-note">${escapeHtml(holidayNames[0])}</small>` : ""}
+          ${leaveEntries.map((entry) => `<small class="leave-badge leave-badge-${classifyLeaveType(entry.type)}">${escapeHtml(entry.type)}</small>`).join("")}
+        </div>
         <span>${day}</span>
       </div>
     `);
@@ -754,6 +931,8 @@ function renderLeaveCalendar() {
 
   leaveCalendarMonth.textContent = formatMonthLabel(currentMonth);
   leaveCalendarMeta.textContent = `${totalDays} days in this month`;
+  leaveCalendarPrevBtn.disabled = currentMonth.getFullYear() === 2000 && currentMonth.getMonth() === 0;
+  leaveCalendarNextBtn.disabled = currentMonth.getFullYear() === 2100 && currentMonth.getMonth() === 11;
   leaveCalendarBoard.innerHTML = cells.join("");
 }
 
@@ -762,6 +941,9 @@ function renderHolidayTypePanel(target, snapshot, fallbackName) {
   const actionAttr = snapshot.configured
     ? `data-edit-holiday="${snapshot.id}"`
     : `data-prefill-holiday="${fallbackName}"`;
+  const footerAction = snapshot.editable
+    ? `<button class="mini-btn" type="button" ${actionAttr}>${actionLabel}</button>`
+    : `<span class="muted">Auto calculated</span>`;
 
   target.innerHTML = `
     <div class="leave-stat-grid">
@@ -779,8 +961,8 @@ function renderHolidayTypePanel(target, snapshot, fallbackName) {
       </article>
     </div>
     <div class="leave-panel-footer">
-      <p class="muted">${snapshot.configured ? `${escapeHtml(snapshot.name)} balance is configured for the current year.` : `${escapeHtml(fallbackName)} is not configured yet.`}</p>
-      <button class="mini-btn" type="button" ${actionAttr}>${actionLabel}</button>
+      <p class="muted">${snapshot.editable ? (snapshot.configured ? `${escapeHtml(snapshot.name)} balance is configured for the current year.` : `${escapeHtml(fallbackName)} is not configured yet.`) : `${escapeHtml(snapshot.name)} balance is calculated from approved leave entries.`}</p>
+      ${footerAction}
     </div>
   `;
 }
@@ -817,12 +999,13 @@ function renderHolidays() {
   const clHoliday = buildHolidaySnapshot(collections.cl, "CL Holiday");
   const plHoliday = buildHolidaySnapshot(collections.pl, "PL Holiday");
   const unpaidHoliday = buildHolidaySnapshot(collections.unpaid, "Unpaid Holiday");
-  const totalUsed = state.holidays.reduce((sum, holiday) => sum + Number(holiday.used || 0), 0);
-  const totalDays = state.holidays.reduce((sum, holiday) => sum + Number(holiday.total || 0), 0);
-  const today = new Date();
-  const configuredNames = state.holidays.length
-    ? state.holidays.map((holiday) => holiday.name).join(", ")
-    : "No holiday types configured yet";
+  const today = clampCalendarCursor(state.calendarCursor || new Date());
+  const currentYearHolidays = getCurrentYearPublicHolidays();
+  const monthHolidays = currentYearHolidays.filter((holiday) => String(holiday.month) === today.toLocaleDateString("en-US", { month: "long" }));
+  const upcomingHoliday = currentYearHolidays.find((holiday) => String(holiday.holidayDate) >= today.toISOString().slice(0, 10)) || currentYearHolidays[0] || null;
+  const configuredNames = monthHolidays.length
+    ? monthHolidays.map((holiday) => holiday.name).join(", ")
+    : "No public holidays in this month yet";
 
   renderLeaveCalendar();
 
@@ -832,15 +1015,15 @@ function renderHolidays() {
       <strong>${today.toLocaleDateString("en-IN", { month: "short" })}</strong>
     </article>
     <article class="leave-stat-card">
-      <span class="leave-stat-label">Types</span>
-      <strong>${state.holidays.length}</strong>
+      <span class="leave-stat-label">Holidays</span>
+      <strong>${monthHolidays.length}</strong>
     </article>
     <article class="leave-stat-card">
-      <span class="leave-stat-label">Available</span>
-      <strong>${Math.max(totalDays - totalUsed, 0)}</strong>
+      <span class="leave-stat-label">Next date</span>
+      <strong>${monthHolidays[0] ? monthHolidays[0].date : "-"}</strong>
     </article>
     <article class="leave-note-card">
-      <span class="leave-stat-label">Snapshot</span>
+      <span class="leave-stat-label">In this month</span>
       <p>${escapeHtml(configuredNames)}</p>
     </article>
   `;
@@ -851,26 +1034,26 @@ function renderHolidays() {
 
   holidayYearSummary.innerHTML = `
     <article class="leave-stat-card">
-      <span class="leave-stat-label">Holiday types</span>
-      <strong>${state.holidays.length}</strong>
+      <span class="leave-stat-label">Year</span>
+      <strong>${today.getFullYear()}</strong>
     </article>
     <article class="leave-stat-card">
-      <span class="leave-stat-label">Used in year</span>
-      <strong>${totalUsed}</strong>
+      <span class="leave-stat-label">Total holidays</span>
+      <strong>${currentYearHolidays.length}</strong>
     </article>
     <article class="leave-stat-card">
-      <span class="leave-stat-label">Total in year</span>
-      <strong>${totalDays}</strong>
+      <span class="leave-stat-label">Upcoming</span>
+      <strong>${escapeHtml(upcomingHoliday?.name || "None")}</strong>
     </article>
     <article class="leave-stat-card">
-      <span class="leave-stat-label">Remaining</span>
-      <strong>${Math.max(totalDays - totalUsed, 0)}</strong>
+      <span class="leave-stat-label">Next date</span>
+      <strong>${escapeHtml(upcomingHoliday ? formatHolidayDateLabel(upcomingHoliday) : "-")}</strong>
     </article>
   `;
 
-  holidayGrid.innerHTML = state.holidays.length
-    ? state.holidays.map((holiday) => `<article class="holiday-card"><div><strong>${escapeHtml(holiday.name)}</strong><span>${holiday.used} used out of ${holiday.total} days</span></div><div class="record-actions"><div class="holiday-balance">${Math.max(Number(holiday.total) - Number(holiday.used), 0)}</div><button class="mini-btn" type="button" data-edit-holiday="${holiday.id}">Edit</button></div></article>`).join("")
-    : `<article class="holiday-card"><div><strong>No holiday types yet</strong><span>Create CL, PL, Unpaid, or any other yearly balance below.</span></div><div class="holiday-balance">0</div></article>`;
+  holidayGrid.innerHTML = currentYearHolidays.length
+    ? currentYearHolidays.map((holiday) => `<article class="holiday-card"><div><strong>${escapeHtml(holiday.name)}</strong><span>${escapeHtml(holiday.month)} ${holiday.date} | ${escapeHtml(holiday.day)}</span></div><div class="record-actions"><div class="holiday-balance">${escapeHtml(String(holiday.date))}</div><button class="mini-btn" type="button" data-edit-holiday="${holiday.id}">Edit</button></div></article>`).join("")
+    : `<article class="holiday-card"><div><strong>No public holidays yet</strong><span>Add the holiday date and name below to build the yearly holiday calendar.</span></div><div class="holiday-balance">0</div></article>`;
 }
 
 function renderUsers() {
@@ -896,18 +1079,78 @@ function renderTodos() {
   todoList.innerHTML = state.todos.map((todo) => `<li class="todo-item ${todo.done ? "done" : ""}"><label><input type="checkbox" data-id="${todo.id}" ${todo.done ? "checked" : ""}><span>${escapeHtml(todo.text)}</span></label><button type="button" data-delete="${todo.id}">Delete</button></li>`).join("");
 }
 
+function renderMeetingUpcomingList() {
+  const upcomingMeetings = sortMeetings(state.meetings)
+    .filter((meeting) => {
+      const startsAt = inferMeetingDate(meeting);
+      return startsAt && startsAt.getTime() >= Date.now();
+    })
+    .slice(0, 8);
+
+  meetingUpcomingList.innerHTML = upcomingMeetings.length
+    ? upcomingMeetings.map((meeting) => `<article class="meeting-item meeting-upcoming-card ${meeting.id === state.selectedMeetingId ? "active" : ""}" data-id="${meeting.id}"><strong>${escapeHtml(meeting.title)}</strong><p>${escapeHtml(meeting.date)} | ${escapeHtml(toMeridiemTime(meeting.startTime))} - ${escapeHtml(toMeridiemTime(meeting.endTime))}</p><span class="meeting-item-tag">${escapeHtml(meeting.location || "Upcoming")}</span></article>`).join("")
+    : `<article class="meeting-upcoming-card"><strong>No upcoming meetings</strong><p>Schedule the next meeting from the form above.</p></article>`;
+}
+
+function renderMeetingHistoryList() {
+  const historyMeetings = sortMeetings(state.meetings)
+    .filter((meeting) => {
+      const startsAt = inferMeetingDate(meeting);
+      return startsAt && startsAt.getTime() < Date.now();
+    })
+    .sort((a, b) => meetingSortValue(b) - meetingSortValue(a))
+    .slice(0, 24);
+
+  meetingHistoryList.innerHTML = historyMeetings.length
+    ? historyMeetings.map((meeting) => `<article class="meeting-item ${meeting.id === state.selectedMeetingId ? "active" : ""}" data-id="${meeting.id}"><h3>${escapeHtml(meeting.title)}</h3><p>${escapeHtml(meeting.date)} | ${escapeHtml(toMeridiemTime(meeting.startTime))} - ${escapeHtml(toMeridiemTime(meeting.endTime))}</p><span class="meeting-item-tag">${escapeHtml(meeting.location || "History")}</span></article>`).join("")
+    : `<article class="meeting-item"><h3>No meeting history</h3><p>Past meetings from the database will appear here automatically.</p></article>`;
+}
+
+function resetMeetingForm() {
+  state.editingMeetingId = null;
+  meetingSubmitBtn.textContent = "Save meeting";
+  meetingForm.reset();
+}
+
+function loadMeetingIntoForm(meeting) {
+  if (!meeting) return;
+  state.editingMeetingId = meeting.id;
+  meetingSubmitBtn.textContent = "Update meeting";
+  meetingTitleInput.value = meeting.title || "";
+  meetingDateInput.value = meeting.date || "";
+  meetingLocationInput.value = meeting.location || "";
+  meetingStartTimeInput.value = toMeridiemTime(meeting.startTime);
+  meetingEndTimeInput.value = toMeridiemTime(meeting.endTime);
+  meetingLinkInput.value = meeting.link || "";
+}
+
 function renderMeetings() {
-  meetingList.innerHTML = state.meetings.map((meeting) => `<article class="meeting-item ${meeting.id === state.selectedMeetingId ? "active" : ""}" data-id="${meeting.id}"><h3>${escapeHtml(meeting.title)}</h3><p>${escapeHtml(meeting.meta)}</p></article>`).join("");
+  renderMeetingUpcomingList();
+  renderMeetingHistoryList();
+  const sortedMeetings = sortMeetings(state.meetings);
+  meetingSelectInput.innerHTML = sortedMeetings.length
+    ? sortedMeetings.map((meeting) => `<option value="${meeting.id}" ${meeting.id === state.selectedMeetingId ? "selected" : ""}>${escapeHtml(meeting.title)}</option>`).join("")
+    : `<option value="">No meetings found</option>`;
   const selectedMeeting = state.meetings.find((meeting) => meeting.id === state.selectedMeetingId);
   if (!selectedMeeting) {
-    meetingTitle.textContent = "No meeting selected";
+    meetingSelectInput.value = "";
+    meetingSelectInput.disabled = true;
     meetingMeta.textContent = "Choose any meeting from the list.";
+    meetingLocationMeta.textContent = "";
+    meetingLinkMeta.textContent = "";
+    meetingSummary.value = "";
     meetingNotes.value = "";
+    deleteMeetingBtn.disabled = true;
     return;
   }
-  meetingTitle.textContent = selectedMeeting.title;
-  meetingMeta.textContent = selectedMeeting.meta;
+  meetingSelectInput.disabled = false;
+  meetingSelectInput.value = String(selectedMeeting.id);
+  meetingMeta.textContent = `${selectedMeeting.date || ""}${selectedMeeting.startTime ? ` | ${toMeridiemTime(selectedMeeting.startTime)}` : ""}${selectedMeeting.endTime ? ` - ${toMeridiemTime(selectedMeeting.endTime)}` : ""}`;
+  meetingLocationMeta.textContent = selectedMeeting.location ? `Location: ${selectedMeeting.location}` : "Location: Not set";
+  meetingLinkMeta.innerHTML = selectedMeeting.link ? `Link: <a href="${escapeHtml(selectedMeeting.link)}" target="_blank" rel="noreferrer">${escapeHtml(selectedMeeting.link)}</a>` : "Link: Not set";
+  meetingSummary.value = selectedMeeting.summary || "";
   meetingNotes.value = selectedMeeting.notes;
+  deleteMeetingBtn.disabled = false;
 }
 
 function renderSidebar() {
@@ -920,7 +1163,7 @@ function renderSidebar() {
     ? (importantTask.done ? "This task is already complete." : "First open task from your planner.")
     : "Add a task to see it here.";
 
-  const firstMeeting = state.meetings[0] || null;
+  const firstMeeting = pickUpcomingMeeting()?.meeting || sortMeetings(state.meetings)[0] || null;
   upcomingMeetingTitle.textContent = firstMeeting ? firstMeeting.title : "No meeting added";
   upcomingMeetingMeta.textContent = firstMeeting ? firstMeeting.meta : "Create a meeting to see it here.";
 
@@ -943,8 +1186,15 @@ function resetScheduleForm() {
 
 function resetHolidayForm() {
   state.editingHolidayId = null;
-  holidaySubmitBtn.textContent = "Save holiday type";
+  holidaySubmitBtn.textContent = "Save holiday";
   holidayForm.reset();
+}
+
+function shiftCalendarMonth(offset) {
+  const cursor = clampCalendarCursor(state.calendarCursor || new Date());
+  const next = new Date(cursor.getFullYear(), cursor.getMonth() + offset, 1);
+  state.calendarCursor = clampCalendarCursor(next);
+  renderHolidays();
 }
 
 function resetFinanceForm() {
@@ -973,20 +1223,14 @@ modeButtons.forEach((button) => {
   });
 });
 
-scopeButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    scopeButtons.forEach((chip) => {
-      chip.classList.toggle("active", chip === button);
-      chip.setAttribute("aria-pressed", chip === button ? "true" : "false");
-    });
-  });
-});
-
 workspaceAddBtn.addEventListener("click", () => {
   const shouldOpen = workspaceMenu.classList.contains("hidden");
   workspaceMenu.classList.toggle("hidden", !shouldOpen);
   workspaceAddBtn.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
 });
+
+leaveCalendarPrevBtn?.addEventListener("click", () => shiftCalendarMonth(-1));
+leaveCalendarNextBtn?.addEventListener("click", () => shiftCalendarMonth(1));
 
 workspaceTabList.addEventListener("click", (event) => {
   const closeButton = event.target.closest("[data-close-workspace-tab]");
@@ -1084,16 +1328,15 @@ holidayForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const payload = {
     name: holidayNameInput.value.trim(),
-    used: Number(holidayUsedInput.value),
-    total: Number(holidayTotalInput.value)
+    holidayDate: holidayDateInput.value
   };
-  if (!payload.name || Number.isNaN(payload.used) || Number.isNaN(payload.total)) return;
+  if (!payload.name || !payload.holidayDate) return;
   if (state.editingHolidayId) {
     const updated = await apiRequest(`/api/holidays/${state.editingHolidayId}`, { method: "PATCH", body: JSON.stringify(payload) });
-    state.holidays = state.holidays.map((item) => item.id === updated.id ? updated : item);
+    state.publicHolidays = state.publicHolidays.map((item) => item.id === updated.id ? updated : item);
   } else {
     const created = await apiRequest("/api/holidays", { method: "POST", body: JSON.stringify(payload) });
-    state.holidays.unshift(created);
+    state.publicHolidays.unshift(created);
   }
   resetHolidayForm();
   renderHolidays();
@@ -1111,13 +1354,12 @@ leaveGrid.addEventListener("click", (event) => {
 
   const editId = event.target.getAttribute("data-edit-holiday");
   if (!editId) return;
-  const holiday = state.holidays.find((item) => item.id === Number(editId));
+  const holiday = state.publicHolidays.find((item) => item.id === Number(editId));
   if (!holiday) return;
   state.editingHolidayId = holiday.id;
-  holidaySubmitBtn.textContent = "Update holiday type";
+  holidaySubmitBtn.textContent = "Update holiday";
   holidayNameInput.value = holiday.name;
-  holidayUsedInput.value = holiday.used;
-  holidayTotalInput.value = holiday.total;
+  holidayDateInput.value = holiday.holidayDate || "";
 });
 
 userForm.addEventListener("submit", async (event) => {
@@ -1195,6 +1437,70 @@ financeList.addEventListener("click", async (event) => {
   }
 });
 
+meetingForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const startTime24 = toTwentyFourHourTime(meetingStartTimeInput.value);
+  const endTime24 = toTwentyFourHourTime(meetingEndTimeInput.value);
+  const payload = {
+    title: meetingTitleInput.value.trim(),
+    date: meetingDateInput.value,
+    startTime: startTime24,
+    endTime: endTime24,
+    location: meetingLocationInput.value.trim(),
+    link: normalizeMeetingLink(meetingLinkInput.value),
+    notes: "",
+    summary: ""
+  };
+  if (!payload.title || !payload.date || !payload.startTime || !payload.endTime) {
+    window.alert("Please enter meeting title, date, start time, and end time.");
+    return;
+  }
+  const meetingStart = buildMeetingDateTime(payload.date, payload.startTime);
+  const meetingEnd = buildMeetingDateTime(payload.date, payload.endTime);
+  if (meetingStart && meetingEnd && meetingEnd < meetingStart) {
+    window.alert("End time cannot be earlier than start time.");
+    return;
+  }
+
+  meetingSubmitBtn.disabled = true;
+  const originalButtonText = meetingSubmitBtn.textContent;
+  meetingSubmitBtn.textContent = state.editingMeetingId ? "Updating..." : "Saving...";
+
+  try {
+    if (state.editingMeetingId) {
+      const existing = state.meetings.find((meeting) => meeting.id === state.editingMeetingId);
+      const updated = await apiRequest(`/api/meetings/${state.editingMeetingId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          ...payload,
+          notes: existing?.notes || "",
+          summary: existing?.summary || ""
+        })
+      });
+      state.meetings = state.meetings.map((meeting) => meeting.id === updated.id ? updated : meeting);
+      state.selectedMeetingId = updated.id;
+    } else {
+      const created = await apiRequest("/api/meetings", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      state.meetings.unshift(created);
+      state.selectedMeetingId = created.id;
+    }
+    resetMeetingForm();
+    renderMeetings();
+    renderSidebar();
+    window.location.reload();
+  } catch (error) {
+    window.alert(error?.message || "Meeting could not be saved.");
+  } finally {
+    meetingSubmitBtn.disabled = false;
+    meetingSubmitBtn.textContent = originalButtonText;
+  }
+});
+
+meetingCancelBtn.addEventListener("click", resetMeetingForm);
+
 todoForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const text = todoInput.value.trim();
@@ -1221,22 +1527,58 @@ todoList.addEventListener("change", async (event) => {
   renderTodos();
 });
 
-meetingList.addEventListener("click", (event) => {
+function handleMeetingSelection(event) {
   const meetingItem = event.target.closest(".meeting-item");
   if (!meetingItem) return;
+  if (!meetingItem.dataset.id) return;
   state.selectedMeetingId = Number(meetingItem.dataset.id);
+  loadMeetingIntoForm(state.meetings.find((meeting) => meeting.id === state.selectedMeetingId));
+  renderMeetings();
+}
+
+meetingUpcomingList.addEventListener("click", handleMeetingSelection);
+meetingHistoryList.addEventListener("click", handleMeetingSelection);
+meetingSelectInput.addEventListener("change", () => {
+  const selectedId = Number(meetingSelectInput.value);
+  if (!selectedId) return;
+  state.selectedMeetingId = selectedId;
+  loadMeetingIntoForm(state.meetings.find((meeting) => meeting.id === selectedId));
   renderMeetings();
 });
 
 saveNotesBtn.addEventListener("click", async () => {
   if (!state.selectedMeetingId) return;
-  const updated = await apiRequest(`/api/meetings/${state.selectedMeetingId}`, { method: "PATCH", body: JSON.stringify({ notes: meetingNotes.value }) });
+  const current = state.meetings.find((meeting) => meeting.id === state.selectedMeetingId);
+  const updated = await apiRequest(`/api/meetings/${state.selectedMeetingId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      title: current?.title || "",
+      date: current?.date || "",
+      startTime: current?.startTime || "",
+      endTime: current?.endTime || "",
+      location: current?.location || "",
+      link: current?.link || "",
+      summary: meetingSummary.value,
+      notes: meetingNotes.value
+    })
+  });
   state.meetings = state.meetings.map((meeting) => meeting.id === updated.id ? updated : meeting);
   renderMeetings();
+  renderSidebar();
   saveNotesBtn.textContent = "Saved";
   window.setTimeout(() => {
-    saveNotesBtn.textContent = "Save notes";
+    saveNotesBtn.textContent = "Save meeting details";
   }, 1200);
+});
+
+deleteMeetingBtn.addEventListener("click", async () => {
+  if (!state.selectedMeetingId) return;
+  await apiRequest(`/api/meetings/${state.selectedMeetingId}`, { method: "DELETE" });
+  state.meetings = state.meetings.filter((meeting) => meeting.id !== state.selectedMeetingId);
+  state.selectedMeetingId = state.meetings[0]?.id || null;
+  resetMeetingForm();
+  renderMeetings();
+  renderSidebar();
 });
 
 async function init() {
@@ -1250,13 +1592,17 @@ async function init() {
   scheduleRangeInput.value = state.currentRange;
   const data = await apiRequest("/api/bootstrap");
   state.holidays = data.holidays || [];
+  state.publicHolidays = data.publicHolidays || [];
+  state.leaveEvents = data.leaveEvents || [];
   state.meetings = data.meetings || [];
   state.todos = data.todos || [];
   state.users = data.users || [];
   state.projects = data.projects || [];
   state.schedules = data.schedules || [];
   state.finances = data.finances || [];
-  state.selectedMeetingId = state.meetings[0]?.id || null;
+  state.calendarCursor = clampCalendarCursor(new Date());
+  state.meetings = sortMeetings(state.meetings);
+  state.selectedMeetingId = pickUpcomingMeeting()?.meeting?.id || [...state.meetings].sort((a, b) => meetingSortValue(b) - meetingSortValue(a))[0]?.id || null;
   renderOrganization();
   renderDashboard();
   renderHolidays();

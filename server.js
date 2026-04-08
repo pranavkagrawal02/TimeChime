@@ -117,6 +117,24 @@ function normalizeNumber(value) {
   return Number(value);
 }
 
+function buildDateTimeValue(dateValue, timeValue) {
+  const date = normalizeText(dateValue);
+  const time = normalizeText(timeValue);
+  if (!date) return "";
+  return `${date}T${time || "00:00"}:00`;
+}
+
+function formatApiErrorMessage(error) {
+  const message = String(error?.message || "Server error");
+  if (
+    message.includes("CK_employeeCalendarNew_dates")
+    || message.includes("CK_employeeCalendar_dates")
+  ) {
+    return "End time cannot be earlier than start time.";
+  }
+  return message;
+}
+
 function getRequestActor(request) {
   const username = normalizeText(request.headers["x-auth-username"]);
   const employeeCode = normalizeText(request.headers["x-auth-employee-code"]);
@@ -234,11 +252,14 @@ async function handleApi(request, response, pathname) {
     const body = await parseBody(request);
     const payload = {
       name: normalizeText(body.name),
-      used: normalizeNumber(body.used),
-      total: normalizeNumber(body.total)
+      used: body.used === undefined || body.used === null || body.used === "" ? undefined : normalizeNumber(body.used),
+      total: body.total === undefined || body.total === null || body.total === "" ? undefined : normalizeNumber(body.total),
+      holidayDate: normalizeText(body.holidayDate)
     };
-    if (!payload.name || Number.isNaN(payload.used) || Number.isNaN(payload.total)) {
-      sendJson(response, 400, { error: "Holiday name, used days, and total days are required" });
+    const isBalancePayload = payload.used !== undefined || payload.total !== undefined;
+    const isCalendarPayload = Boolean(payload.holidayDate);
+    if (!payload.name || (!isCalendarPayload && (!isBalancePayload || Number.isNaN(payload.used) || Number.isNaN(payload.total)))) {
+      sendJson(response, 400, { error: "Holiday name plus either holiday date or used/total balance is required" });
       return;
     }
 
@@ -251,8 +272,9 @@ async function handleApi(request, response, pathname) {
     const body = await parseBody(request);
     const holiday = await store.updateHoliday(holidayId, {
       name: body.name === undefined ? undefined : normalizeText(body.name),
-      used: body.used === undefined ? undefined : normalizeNumber(body.used),
-      total: body.total === undefined ? undefined : normalizeNumber(body.total)
+      used: body.used === undefined || body.used === null || body.used === "" ? undefined : normalizeNumber(body.used),
+      total: body.total === undefined || body.total === null || body.total === "" ? undefined : normalizeNumber(body.total),
+      holidayDate: body.holidayDate === undefined ? undefined : normalizeText(body.holidayDate)
     }, actor);
     if (!holiday) {
       notFound(response);
@@ -354,13 +376,54 @@ async function handleApi(request, response, pathname) {
   if (request.method === "PATCH" && pathname.startsWith("/api/meetings/")) {
     const meetingId = Number(pathname.split("/").pop());
     const body = await parseBody(request);
-    const meeting = await store.updateMeeting(meetingId, { notes: body.notes === undefined ? undefined : String(body.notes) }, actor);
+    const meeting = await store.updateMeeting(meetingId, {
+      title: body.title === undefined ? undefined : normalizeText(body.title),
+      notes: body.notes === undefined ? undefined : String(body.notes),
+      summary: body.summary === undefined ? undefined : String(body.summary),
+      location: body.location === undefined ? undefined : normalizeText(body.location),
+      link: body.link === undefined ? undefined : normalizeText(body.link),
+      startDateTime: body.date === undefined ? undefined : buildDateTimeValue(body.date, body.startTime),
+      endDateTime: body.date === undefined ? undefined : buildDateTimeValue(body.date, body.endTime || body.startTime)
+    }, actor);
     if (!meeting) {
       notFound(response);
       return;
     }
 
     sendJson(response, 200, meeting);
+    return;
+  }
+
+  if (request.method === "POST" && pathname === "/api/meetings") {
+    const body = await parseBody(request);
+    const payload = {
+      title: normalizeText(body.title),
+      notes: normalizeText(body.notes),
+      summary: normalizeText(body.summary),
+      location: normalizeText(body.location),
+      link: normalizeText(body.link),
+      startDateTime: buildDateTimeValue(body.date, body.startTime),
+      endDateTime: buildDateTimeValue(body.date, body.endTime || body.startTime)
+    };
+    if (!payload.title || !payload.startDateTime || !payload.endDateTime) {
+      sendJson(response, 400, { error: "Meeting title, date, start time, and end time are required" });
+      return;
+    }
+
+    sendJson(response, 201, await store.createMeeting(payload, actor));
+    return;
+  }
+
+  if (request.method === "DELETE" && pathname.startsWith("/api/meetings/")) {
+    const meetingId = Number(pathname.split("/").pop());
+    const deleted = await store.deleteMeeting(meetingId, actor);
+    if (!deleted) {
+      notFound(response);
+      return;
+    }
+
+    response.writeHead(204);
+    response.end();
     return;
   }
 
@@ -386,7 +449,7 @@ const server = http.createServer(async (request, response) => {
 
     serveFile(response, filePath);
   } catch (error) {
-    sendJson(response, 500, { error: error.message || "Server error" });
+    sendJson(response, 500, { error: formatApiErrorMessage(error) });
   }
 });
 

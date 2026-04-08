@@ -580,9 +580,13 @@ button:active {
 .team-panel,
 .project-panel,
 .finance-panel,
-.todo-panel,
-.meeting-panel {
+.todo-panel {
   grid-column: span 6;
+}
+
+.meeting-panel {
+  grid-column: span 12;
+  min-height: calc(100vh - 190px);
 }
 
 .schedule-panel {
@@ -817,6 +821,31 @@ button:active {
   letter-spacing: 0.08em;
 }
 
+.leave-calendar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.calendar-nav-btn {
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(21, 35, 59, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #15233b;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.calendar-nav-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .leave-calendar-cell {
   min-height: 78px;
   padding: 12px;
@@ -825,8 +854,27 @@ button:active {
   background: rgba(255, 255, 255, 0.72);
   display: flex;
   align-items: flex-start;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 8px;
   font-weight: 700;
+}
+
+.leave-calendar-notes {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 72%;
+}
+
+.leave-calendar-cell small {
+  display: block;
+  max-width: 70%;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: left;
 }
 
 .leave-calendar-cell.is-empty {
@@ -838,9 +886,68 @@ button:active {
   background: linear-gradient(180deg, rgba(230, 168, 23, 0.1), rgba(255, 255, 255, 0.8));
 }
 
+.leave-calendar-cell.is-saturday {
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.09), rgba(255, 255, 255, 0.88));
+}
+
+.leave-calendar-cell.is-sunday {
+  background: linear-gradient(180deg, rgba(232, 93, 117, 0.1), rgba(255, 255, 255, 0.9));
+}
+
 .leave-calendar-cell.is-today {
   border-color: rgba(37, 99, 235, 0.35);
   box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.leave-calendar-cell.has-leave {
+  border-width: 2px;
+}
+
+.leave-calendar-cell.leave-cl {
+  background: linear-gradient(180deg, rgba(230, 168, 23, 0.18), rgba(255, 255, 255, 0.92));
+  border-color: rgba(230, 168, 23, 0.38);
+}
+
+.leave-calendar-cell.leave-pl {
+  background: linear-gradient(180deg, rgba(97, 177, 90, 0.18), rgba(255, 255, 255, 0.92));
+  border-color: rgba(97, 177, 90, 0.42);
+}
+
+.leave-calendar-cell.leave-unpaid {
+  background: linear-gradient(180deg, rgba(232, 93, 117, 0.18), rgba(255, 255, 255, 0.92));
+  border-color: rgba(232, 93, 117, 0.42);
+}
+
+.holiday-note {
+  color: #173f9a;
+}
+
+.leave-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.leave-badge-cl {
+  background: rgba(230, 168, 23, 0.18);
+  color: #8a5a00;
+}
+
+.leave-badge-pl {
+  background: rgba(97, 177, 90, 0.18);
+  color: #256b1f;
+}
+
+.leave-badge-unpaid {
+  background: rgba(232, 93, 117, 0.16);
+  color: #a12f47;
 }
 
 .leave-summary-grid,
@@ -1071,17 +1178,150 @@ button:active {
 
 .meeting-layout {
   display: grid;
-  grid-template-columns: 0.9fr 1.1fr;
-  gap: 16px;
+  grid-template-columns: minmax(320px, 0.85fr) minmax(420px, 1.15fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.meeting-stack {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.meeting-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.meeting-stream {
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.meeting-stream-head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.meeting-stream-head .panel-kicker {
+  margin-bottom: 6px;
+}
+
+.meeting-form {
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+}
+
+.form-field {
+  display: grid;
+  gap: 8px;
+}
+
+.form-field span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.meeting-upcoming-list {
+  display: grid;
+  gap: 10px;
+}
+
+.meeting-history-list {
+  display: grid;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.meeting-upcoming-card {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(219, 232, 255, 0.62), rgba(255, 255, 255, 0.9));
+  border: 1px solid rgba(37, 99, 235, 0.14);
+}
+
+.meeting-upcoming-card strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.meeting-upcoming-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .meeting-item {
   cursor: pointer;
+  padding: 16px 18px;
+  border-radius: 20px;
+  display: grid;
+  gap: 6px;
 }
 
 .meeting-item.active {
   border-color: rgba(37, 99, 235, 0.35);
   background: rgba(37, 99, 235, 0.08);
+}
+
+.meeting-item-tag {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(15, 139, 141, 0.12);
+  color: var(--teal);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.meeting-detail-card {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-height: 100%;
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid var(--line);
+}
+
+.meeting-selector-field select {
+  width: 100%;
+}
+
+.meeting-detail-line {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.meeting-detail-line a {
+  color: var(--blue);
+  word-break: break-all;
+}
+
+.meeting-note textarea {
+  min-height: 130px;
+  resize: vertical;
+}
+
+#meetingSummary {
+  min-height: 110px;
 }
 
 .meeting-note textarea {
@@ -1261,6 +1501,10 @@ button:active {
   }
 
   .leave-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .meeting-sections {
     grid-template-columns: 1fr;
   }
 

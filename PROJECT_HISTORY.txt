@@ -60,13 +60,12 @@ Current Product State
 - Dashboard metrics now show live workspace counts instead of the old gauge widgets.
 - A separate Organization view now renders the current reporting structure from `dbo.users`.
 - The old Leave section is now labeled `Calender`.
-- The `Calender` workspace now has 6 components:
-  - `Calender`
-  - `Holiday (in that Month)`
-  - `CL Holiday`
-  - `PL Holiday`
-  - `Unpaid Holiday`
-  - `Holiday in year`
+- The `Calender` workspace now uses a real month calendar with month navigation.
+- Calendar navigation now supports `Jan 2000` through `Dec 2100`.
+- Leave entries now show separate colors for `CL`, `PL`, and `UNPAID`.
+- Saturdays and Sundays now have different colors in the calendar.
+- Public holidays are shown separately from leave balances.
+- `2026` public holidays have been seeded into SQL and are visible in the app.
 - Non-dashboard sections have a browser-like workspace tab row.
 - Schedules, Projects, Calender, and Meetings support a + button for future tabs.
 - Extra non-dashboard tabs currently open placeholder workspace panels.
@@ -76,14 +75,24 @@ Current Product State
   - meeting summary
   - nearest upcoming meeting countdown when time can be inferred
 - Sidebar stays visually consistent on larger screens.
-- Scope chips at top right behave like selected widgets.
+- Top-right scope chips have been removed.
+- The `Daily / Weekly / Monthly` switch now stays only on the main Dashboard, not on Meetings / Calender / Projects / Schedules.
+- Meetings now use a full workspace layout with:
+  - meeting form
+  - meeting selector dropdown
+  - upcoming meetings list
+  - meeting history list
+  - summary and notes editor
+- Users can add future meetings or enter missed meetings later so older meetings go to `Meeting history`.
+- Meeting form now validates time order before save and shows a clear message if end time is before start time.
+- Meeting link input no longer silently blocks save because of browser URL validation.
 
 Current SQL App Mapping
 -----------------------
 - `Schedules` component -> `dbo.employeeSchedule`
 - `Projects` component -> `dbo.employeeProject`
 - `Calender` component -> `dbo.employeeCalendar`
-- `Meetings` component -> `dbo.employeeMeeting`
+- `Meetings` component -> unified `dbo.employeeCalendar` when available, otherwise legacy `dbo.employeeMeeting`
 - `Organization` component -> `dbo.users`
 
 Current SQL Application Flow
@@ -100,7 +109,8 @@ Current SQL Application Flow
   - `Schedules` reads and writes `dbo.employeeSchedule`
   - `Projects` reads and writes `dbo.employeeProject`
   - `Calender` reads and writes `dbo.employeeCalendar`
-  - `Meetings` reads and writes `dbo.employeeMeeting`
+  - `Meetings` reads and writes `dbo.employeeCalendar` when unified calendar is present
+  - `Meetings` falls back to `dbo.employeeMeeting` only for older database setups
   - `Organization` reads `dbo.users` and builds the tree from `EmpReportingManagerID -> EmpID`
 - Recommended future access scope:
   - employee -> own data
@@ -126,6 +136,17 @@ Recent Completed Work
 - Switched the active SQL login path to the current `dbo.users` schema with `EmpUsername` / `EmpPassword`.
 - Verified `owner1 / owner123` works against the app API in SQL mode.
 - Connected current SQL bootstrap loading to the new employee-based schema for users, projects, schedules, and organization hierarchy.
+- Recreated the calendar design around a unified `dbo.employeeCalendar` table.
+- Added SQL scripts for unified calendar redesign, 2026 public holiday seed data, and extended meeting fields.
+- Connected leave UI to SQL-backed leave events and public holidays.
+- Added calendar coloring for leave types plus separate weekend styling.
+- Expanded the meetings area into a dedicated full workspace with upcoming and history sections.
+- Added SQL-backed meeting create, update, and delete endpoints.
+- Added support for meeting location, link, summary, and notes.
+- Added a meeting selector dropdown in the details panel.
+- Removed unnecessary top-right UI chips and hid the range switch outside the Dashboard.
+- Added client-side validation for invalid meeting time ranges.
+- Added a user-facing note that past meetings can be entered later.
 
 Latest Git Status Reference
 ---------------------------
@@ -151,6 +172,9 @@ Open Items / Next Ideas
 - Turn non-dashboard placeholder tabs into real feature tabs.
 - Expand schedule-related sub-tabs from the + menu.
 - Finish validating SQL Server permissions and end-to-end app login flow.
+- Update and review the `Projects` component.
+- Update and review the `Schedules` component.
+- Update and review the `Dashboard` component.
 
 Latest Documentation Update
 ---------------------------
@@ -191,6 +215,22 @@ Git commit:
 - working tree only (not committed yet)
 Next step:
 - Continue connecting the remaining modules so each component reads from and writes to its mapped SQL table.
+
+Date: 2026-04-08
+What changed:
+- Updated docs to reflect the unified employee calendar design and the new meetings workspace.
+- Recorded the 2026 public holiday seed, leave color handling, weekend colors, and long-range calendar navigation.
+- Recorded that meetings now use `dbo.employeeCalendar` when available, with legacy fallback only if needed.
+- Recorded UI cleanup such as removing the top-right chips and hiding the range switch outside Dashboard.
+- Added a note that the live app may need a backend restart after server-side API changes.
+- Recorded that project, schedule, and dashboard component updates and review are still pending.
+Files touched:
+- README.md
+- PROJECT_HISTORY.txt
+Git commit:
+- working tree only (not committed yet)
+Next step:
+- Restart the live backend on `localhost:3000` when server-side meeting API changes are made, then continue with project, schedule, and dashboard component updates and review.
 
 Update Log Template
 -------------------

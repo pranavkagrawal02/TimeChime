@@ -3,8 +3,8 @@
 Schedule Tracker Hub is a browser-based planning dashboard for:
 
 - schedules
-- leave and holiday types
-- meetings and notes
+- leave, public holidays, and calendar entries
+- meetings, summaries, and notes
 - projects
 - finance records
 - shared to-dos
@@ -14,7 +14,7 @@ The app now supports two local storage modes:
 - frontend served locally by `server.js`
 - default data stored in local [db.json](/d:/PranavData/scheduleTrackerProject/db.json)
 - optional SQL Server storage for SSMS / SQL Server Express setups
-- refreshed dashboard UI with project watch cards, operational metrics, an organization view, and a multi-panel `Calender` workspace
+- refreshed dashboard UI with project watch cards, operational metrics, an organization view, a real month calendar, and a full meetings workspace
 
 ## Quick Start
 
@@ -171,7 +171,66 @@ Important:
 - in JSON mode, authentication is demo-oriented and does not read passwords from `db.json.users`
 - if `SQL_SERVER` and `SQL_DATABASE` are set, the app uses SQL Server
 - the SQL store expects your SSMS database tables to exist
-- the dashboard now shows recent project cards, live workspace counts, a separate organization tab, and a 6-panel `Calender` workspace
+- the dashboard now shows recent project cards, live workspace counts, and a separate organization tab
+- frontend source files are `dashboard.html`, `dashboard-dynamic.js`, and `styles.css`; after editing them, run `node scripts/sync-public.js`
+- if `localhost:3000` is still serving an older backend after code changes, restart `server.js` so new API routes such as `POST /api/meetings` are active
+
+## Calendar And Leave
+
+- `dbo.employeeCalendar` is now the main unified calendar table in SQL mode
+- it is designed to hold leave, meetings, public holidays, schedules, deadlines, and general calendar entries
+- leave colors are separated in the calendar UI for `CL`, `PL`, and `UNPAID`
+- Saturday and Sunday are highlighted with different colors
+- calendar navigation supports `Jan 2000` through `Dec 2100`
+- public holidays for `2026` are seeded separately and shown in the leave / calendar workspace
+
+Leave rules currently implemented in SQL design:
+
+- `CL` accrues `1` day per month
+- unused `CL` carries forward within the same year only
+- `PL` accrues `5` days per month
+- unused `PL` carries forward within the same year only
+- `PL` cannot accumulate above `45` days
+- `Unpaid` leave is tracked separately after paid leave is exhausted
+
+Relevant SQL scripts:
+
+- [01-recreate-unified-calendar.sql](/d:/PranavData/scheduleTrackerProject/database/redesign-tables/employeeCalendar/01-recreate-unified-calendar.sql)
+- [02-seed-public-holidays-2026.sql](/d:/PranavData/scheduleTrackerProject/database/redesign-tables/employeeCalendar/02-seed-public-holidays-2026.sql)
+- [03-extend-meeting-fields.sql](/d:/PranavData/scheduleTrackerProject/database/redesign-tables/employeeCalendar/03-extend-meeting-fields.sql)
+
+## Meetings Workspace
+
+- the Meetings screen is now a full-width workspace
+- users can add future meetings or enter missed meetings later
+- future meetings appear in `Upcoming meetings`
+- past meetings appear in `Meeting history`
+- the selected meeting can be changed from a dropdown bound to meeting records from the database
+- meeting details now include:
+  - title
+  - date
+  - start time
+  - end time
+  - location
+  - link
+  - summary
+  - notes
+- invalid time ranges are blocked before save, for example end time earlier than start time
+- meeting links are normalized before save so simple inputs like `meeting.com` still work
+
+## Current Focus
+
+Work completed recently is mainly around:
+
+- unified calendar and leave behavior
+- public holiday support
+- meetings workspace redesign
+
+Still pending for the next round:
+
+- project component updates and review
+- schedule component updates and review
+- dashboard component updates and review
 
 ## SQL App Flow
 
@@ -186,7 +245,7 @@ Current component mapping:
 - `Schedules` component -> `dbo.employeeSchedule`
 - `Projects` component -> `dbo.employeeProject`
 - `Calender` component -> `dbo.employeeCalendar`
-- `Meetings` component -> `dbo.employeeMeeting`
+- `Meetings` component -> `dbo.employeeCalendar` when unified calendar exists, otherwise legacy `dbo.employeeMeeting`
 - `Organization` component -> `dbo.users`
 
 Current module flow:
@@ -205,8 +264,9 @@ Current module flow:
   - fetches rows from `dbo.employeeCalendar` for the logged-in `EmpID`
   - add, edit, and delete actions write back to `dbo.employeeCalendar`
 - `Meetings`
-  - fetches rows from `dbo.employeeMeeting` for the logged-in `EmpID`
-  - add, edit, and delete actions write back to `dbo.employeeMeeting`
+  - fetches rows from unified `dbo.employeeCalendar` in SQL mode when available
+  - falls back to legacy `dbo.employeeMeeting` if needed
+  - add, edit, and delete actions write back to the active meeting source
 - `Organization`
   - reads from `dbo.users`
   - uses `EmpReportingManagerID -> EmpID` to build the reporting tree

@@ -60,16 +60,10 @@
         </div>
 
         <div class="topbar-actions">
-          <div class="mode-switch" role="tablist" aria-label="View range">
+          <div class="mode-switch" id="topbarModeSwitch" role="tablist" aria-label="View range">
             <button class="mode-pill" data-range="daily">Daily</button>
             <button class="mode-pill active" data-range="weekly">Weekly</button>
             <button class="mode-pill" data-range="monthly">Monthly</button>
-          </div>
-          <div class="scope-tags">
-            <button class="scope-chip active" type="button" aria-pressed="true">Single User</button>
-            <button class="scope-chip scope-chip-green" type="button" aria-pressed="false">Multi User</button>
-            <button class="scope-chip scope-chip-yellow" type="button" aria-pressed="false">Corporate</button>
-            <button class="scope-chip scope-chip-red" type="button" aria-pressed="false">Government</button>
           </div>
         </div>
       </header>
@@ -211,7 +205,11 @@
                 </div>
                 <p class="muted" id="leaveCalendarMeta">Monthly planning overview.</p>
               </div>
-              <div class="leave-calendar-month" id="leaveCalendarMonth"></div>
+              <div class="leave-calendar-toolbar">
+                <button class="calendar-nav-btn" type="button" id="leaveCalendarPrevBtn" aria-label="Previous month">&lt;</button>
+                <div class="leave-calendar-month" id="leaveCalendarMonth"></div>
+                <button class="calendar-nav-btn" type="button" id="leaveCalendarNextBtn" aria-label="Next month">&gt;</button>
+              </div>
               <div class="leave-calendar-weekdays" aria-hidden="true">
                 <span>Sun</span>
                 <span>Mon</span>
@@ -268,21 +266,18 @@
               <div class="panel-heading">
                 <div>
                   <p class="panel-kicker">Yearly overview</p>
-                  <h2>Holiday in year</h2>
+                  <h2>Public holidays in year</h2>
                 </div>
-                <p class="muted">Add or update yearly holiday balances here.</p>
+                <p class="muted">Add or update public holiday dates for the selected year.</p>
               </div>
 
               <div class="leave-summary-grid leave-year-grid" id="holidayYearSummary"></div>
 
               <form class="stack-form" id="holidayForm">
-                <input id="holidayNameInput" type="text" placeholder="Holiday type name" maxlength="60">
-                <div class="form-grid">
-                  <input id="holidayUsedInput" type="number" min="0" placeholder="Used days">
-                  <input id="holidayTotalInput" type="number" min="0" placeholder="Total days">
-                </div>
+                <input id="holidayNameInput" type="text" placeholder="Holiday name" maxlength="100">
+                <input id="holidayDateInput" type="date">
                 <div class="action-row">
-                  <button type="submit" id="holidaySubmitBtn">Save holiday type</button>
+                  <button type="submit" id="holidaySubmitBtn">Save holiday</button>
                   <button type="button" class="ghost-btn" id="holidayCancelBtn">Cancel edit</button>
                 </div>
               </form>
@@ -403,22 +398,77 @@
           <ul class="todo-list" id="todoList"></ul>
         </section>
 
-        <section class="panel meeting-panel view-panel" data-section="dashboard meetings">
+        <section class="panel meeting-panel view-panel" data-section="meetings">
           <div class="panel-heading">
             <div>
               <p class="panel-kicker">Meeting desk</p>
-              <h2>Meetings and notes</h2>
+              <h2>Meetings workspace</h2>
             </div>
-            <p class="muted">Select a meeting and edit notes from the right side.</p>
+            <p class="muted">Add upcoming meetings or enter missed meetings later, then keep links, summary, and notes in one place.</p>
           </div>
           <div class="meeting-layout">
-            <div class="meeting-list" id="meetingList"></div>
-            <div class="meeting-note">
-              <h3 id="meetingTitle">No meeting selected</h3>
-              <p class="meeting-meta" id="meetingMeta">Choose any meeting from the list.</p>
-              <textarea id="meetingNotes" placeholder="Meeting notes will appear here. You can edit and save them."></textarea>
-              <button id="saveNotesBtn" type="button">Save notes</button>
+            <div class="meeting-stack">
+              <form class="stack-form meeting-form" id="meetingForm">
+                <input id="meetingTitleInput" type="text" placeholder="Meeting title" maxlength="120">
+                <div class="form-grid">
+                  <label class="form-field">
+                    <span>Meeting date</span>
+                    <input id="meetingDateInput" type="date">
+                  </label>
+                  <label class="form-field">
+                    <span>Meeting location</span>
+                    <input id="meetingLocationInput" type="text" placeholder="Meeting location" maxlength="150">
+                  </label>
+                </div>
+                <div class="form-grid">
+                  <label class="form-field">
+                    <span>Start time</span>
+                    <input id="meetingStartTimeInput" type="text" placeholder="03:30 PM" inputmode="text" maxlength="8">
+                  </label>
+                  <label class="form-field">
+                    <span>End time</span>
+                    <input id="meetingEndTimeInput" type="text" placeholder="04:30 PM" inputmode="text" maxlength="8">
+                  </label>
+                </div>
+                <input id="meetingLinkInput" type="text" placeholder="Meeting link">
+                <p class="muted">You can also add a past meeting later. Past-dated meetings will appear in Meeting history.</p>
+                <div class="action-row">
+                  <button id="meetingSubmitBtn" type="submit">Save meeting</button>
+                  <button id="meetingCancelBtn" class="ghost-btn" type="button">Cancel edit</button>
+                </div>
+              </form>
             </div>
+            <div class="meeting-note meeting-detail-card">
+              <label class="form-field meeting-selector-field">
+                <span>Meeting</span>
+                <select id="meetingSelectInput"></select>
+              </label>
+              <p class="meeting-meta" id="meetingMeta">Choose any meeting from the list.</p>
+              <p class="meeting-detail-line" id="meetingLocationMeta"></p>
+              <p class="meeting-detail-line" id="meetingLinkMeta"></p>
+              <textarea id="meetingSummary" placeholder="Write a short meeting summary for quick review."></textarea>
+              <textarea id="meetingNotes" placeholder="Meeting notes, discussion points, and action items."></textarea>
+              <div class="action-row">
+                <button id="saveNotesBtn" type="button">Save meeting details</button>
+                <button id="deleteMeetingBtn" class="ghost-btn" type="button">Delete meeting</button>
+              </div>
+            </div>
+          </div>
+          <div class="meeting-sections">
+            <article class="meeting-stream">
+              <div class="meeting-stream-head">
+                <p class="panel-kicker">Upcoming</p>
+                <h3>Upcoming meetings</h3>
+              </div>
+              <div class="meeting-list meeting-upcoming-list" id="meetingUpcomingList"></div>
+            </article>
+            <article class="meeting-stream">
+              <div class="meeting-stream-head">
+                <p class="panel-kicker">History</p>
+                <h3>Meeting history</h3>
+              </div>
+              <div class="meeting-list meeting-history-list" id="meetingHistoryList"></div>
+            </article>
           </div>
         </section>
       </main>

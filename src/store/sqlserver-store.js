@@ -58,6 +58,234 @@ function formatMeetingMeta(row) {
   return meta.join(" | ");
 }
 
+const SCHEDULE_META_PREFIX = "SCHEDULE_META:";
+const HOLIDAY_SUMMARY_PREFIX = "HOLIDAY_SUMMARY:";
+const AUTO_HOLIDAY_LABELS = new Set(["cl", "cl holiday", "pl", "pl holiday", "unpaid", "unpaid holiday"]);
+
+function safeJsonParse(value) {
+  try {
+    return JSON.parse(String(value || ""));
+  } catch {
+    return null;
+  }
+}
+
+function encodeTaggedJson(prefix, payload) {
+  return `${prefix}${JSON.stringify(payload)}`;
+}
+
+function decodeTaggedJson(prefix, value) {
+  const text = String(value || "");
+  if (!text.startsWith(prefix)) {
+    return null;
+  }
+  return safeJsonParse(text.slice(prefix.length));
+}
+
+function isDerivedHolidayName(name) {
+  return AUTO_HOLIDAY_LABELS.has(normalizeText(name).toLowerCase());
+}
+
+function padNumber(value) {
+  return String(value).padStart(2, "0");
+}
+
+function coerceDate(value) {
+  if (!value) return null;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatLocalDate(value) {
+  const date = coerceDate(value);
+  if (!date) return "";
+  return `${date.getFullYear()}-${padNumber(date.getMonth() + 1)}-${padNumber(date.getDate())}`;
+}
+
+function formatLocalTime(value) {
+  const date = coerceDate(value);
+  if (date) {
+    return `${padNumber(date.getHours())}:${padNumber(date.getMinutes())}`;
+  }
+  const text = String(value || "");
+  const match = text.match(/(\d{2}:\d{2})/);
+  return match ? match[1] : "";
+}
+
+function formatCalendarMeetingMeta(row) {
+  const meta = [];
+  const date = formatLocalDate(row.startDateTime);
+  const start = formatLocalTime(row.startDateTime);
+  const end = formatLocalTime(row.endDateTime);
+  if (date) meta.push(date);
+  if (start && end && start !== end) meta.push(`${start} - ${end}`);
+  else if (start) meta.push(start);
+  return meta.join(" | ");
+}
+
+function buildIsoFromDateAndTime(dateValue, timeValue) {
+  const date = formatLocalDate(dateValue);
+  const time = formatLocalTime(timeValue);
+  return date && time ? `${date}T${time}:00` : null;
+}
+
+function mapCalendarMeetingRow(row) {
+  const startsAt = coerceDate(row.startDateTime);
+  const endsAt = coerceDate(row.endDateTime || row.startDateTime);
+  return {
+    id: Number(row.calendarId),
+    title: row.title,
+    meta: formatCalendarMeetingMeta(row),
+    notes: row.description || "",
+    summary: row.meetingSummary || "",
+    location: row.meetingLocation || "",
+    link: row.meetingLink || "",
+    date: formatLocalDate(startsAt),
+    startTime: formatLocalTime(startsAt),
+    endTime: formatLocalTime(endsAt),
+    startsAt: startsAt ? startsAt.toISOString() : null,
+    endsAt: endsAt ? endsAt.toISOString() : null
+  };
+}
+
+function mapLegacyMeetingRow(row) {
+  const startsAt = buildIsoFromDateAndTime(row.meetingDate, row.startTime);
+  const endsAt = buildIsoFromDateAndTime(row.meetingDate, row.endTime || row.startTime);
+  return {
+    id: Number(row.meetingId),
+    title: row.meetingTitle,
+    meta: formatMeetingMeta(row),
+    notes: row.meetingDescription || "",
+    summary: row.meetingSummary || "",
+    location: row.meetingLocation || "",
+    link: row.meetingLink || "",
+    date: formatLocalDate(row.meetingDate),
+    startTime: formatLocalTime(row.startTime),
+    endTime: formatLocalTime(row.endTime),
+    startsAt,
+    endsAt
+  };
+}
+
+function formatMonthName(value) {
+  const date = coerceDate(value);
+  return date ? date.toLocaleDateString("en-US", { month: "long" }) : "";
+}
+
+function formatDayName(value) {
+  const date = coerceDate(value);
+  return date ? date.toLocaleDateString("en-US", { weekday: "long" }) : "";
+}
+
+function inferRangeFromEntryType(entryType) {
+  const normalized = normalizeText(entryType).toLowerCase();
+  if (normalized === "daily") return "daily";
+  if (normalized === "monthly") return "monthly";
+  return "weekly";
+}
+
+function weekdayLabel(date) {
+  const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const resolved = coerceDate(date);
+  return resolved ? labels[resolved.getDay()] : "Mon";
+}
+
+function monthWeekLabel(date) {
+  const resolved = coerceDate(date);
+  if (!resolved) return "Week 1";
+  return `Week ${Math.floor((resolved.getDate() - 1) / 7) + 1}`;
+}
+
+function inferScheduleDay(date, range) {
+  return normalizeText(range) === "monthly" ? monthWeekLabel(date) : weekdayLabel(date);
+}
+
+function buildScheduleMetadata(payload) {
+  return encodeTaggedJson(SCHEDULE_META_PREFIX, {
+    range: normalizeText(payload.range).toLowerCase() || "weekly",
+    day: normalizeText(payload.day),
+    note: normalizeText(payload.note),
+    color: normalizeText(payload.color) || "#2563eb"
+  });
+}
+
+function parseScheduleMetadata(description) {
+  const metadata = decodeTaggedJson(SCHEDULE_META_PREFIX, description);
+  if (metadata) {
+    return {
+      range: normalizeText(metadata.range).toLowerCase() || "weekly",
+      day: normalizeText(metadata.day),
+      note: normalizeText(metadata.note),
+      color: normalizeText(metadata.color) || "#2563eb"
+    };
+  }
+  return null;
+}
+
+function buildHolidaySummaryMetadata(payload) {
+  return encodeTaggedJson(HOLIDAY_SUMMARY_PREFIX, {
+    used: Number(payload.used || 0),
+    total: Number(payload.total || 0)
+  });
+}
+
+function parseHolidaySummaryMetadata(description) {
+  const metadata = decodeTaggedJson(HOLIDAY_SUMMARY_PREFIX, description);
+  if (!metadata) return null;
+  return {
+    used: Number(metadata.used || 0),
+    total: Number(metadata.total || 0)
+  };
+}
+
+function buildScheduleDate(range, day) {
+  const normalizedRange = normalizeText(range).toLowerCase();
+  const normalizedDay = normalizeText(day).toLowerCase();
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(9, 0, 0, 0);
+
+  if (normalizedRange === "monthly") {
+    const weekMatch = normalizedDay.match(/week\s*(\d+)/i);
+    const weekNo = Math.max(1, Number(weekMatch?.[1] || 1));
+    next.setDate(1);
+    next.setDate(Math.min(1 + ((weekNo - 1) * 7), 28));
+    return next;
+  }
+
+  const weekdayMap = {
+    sun: 0,
+    sunday: 0,
+    mon: 1,
+    monday: 1,
+    tue: 2,
+    tuesday: 2,
+    wed: 3,
+    wednesday: 3,
+    thu: 4,
+    thursday: 4,
+    fri: 5,
+    friday: 5,
+    sat: 6,
+    saturday: 6
+  };
+  const targetDay = weekdayMap[normalizedDay];
+  if (targetDay === undefined) {
+    return next;
+  }
+  const offset = (targetDay - next.getDay() + 7) % 7;
+  next.setDate(next.getDate() + offset);
+  return next;
+}
+
+function normalizeHolidayDate(value) {
+  const date = coerceDate(value);
+  if (!date) return null;
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
 function createSqlServerStore() {
   const rawServer = String(process.env.SQL_SERVER || "").trim();
   const serverParts = rawServer.split("\\");
@@ -87,6 +315,7 @@ function createSqlServerStore() {
 
   let poolPromise;
   const tableExistsCache = new Map();
+  const columnExistsCache = new Map();
 
   function getPool() {
     if (!poolPromise) {
@@ -108,6 +337,40 @@ function createSqlServerStore() {
     const exists = Boolean(result.recordset[0]?.exists_flag);
     tableExistsCache.set(tableName, exists);
     return exists;
+  }
+
+  async function columnExists(tableName, columnName) {
+    const cacheKey = `${tableName}:${columnName}`;
+    if (columnExistsCache.has(cacheKey)) {
+      return columnExistsCache.get(cacheKey);
+    }
+
+    const pool = await getPool();
+    const result = await pool.request()
+      .input("table_name", sql.NVarChar(128), tableName)
+      .input("column_name", sql.NVarChar(128), columnName)
+      .query(`
+        SELECT CASE
+          WHEN COL_LENGTH(N'dbo.' + @table_name, @column_name) IS NULL THEN 0
+          ELSE 1
+        END AS exists_flag
+      `);
+
+    const exists = Boolean(result.recordset[0]?.exists_flag);
+    columnExistsCache.set(cacheKey, exists);
+    return exists;
+  }
+
+  async function hasUnifiedEmployeeCalendar() {
+    return await tableExists("employeeCalendar") && await columnExists("employeeCalendar", "entryCategory");
+  }
+
+  async function getMeetingFieldSupport() {
+    return {
+      location: await columnExists("employeeCalendar", "meetingLocation"),
+      link: await columnExists("employeeCalendar", "meetingLink"),
+      summary: await columnExists("employeeCalendar", "meetingSummary")
+    };
   }
 
   async function getActorEmpId(actor) {
@@ -183,9 +446,249 @@ function createSqlServerStore() {
     return result.recordset[0]?.EmpFullName || null;
   }
 
+  async function getCalendarSchedules(actorEmpId) {
+    const pool = await getPool();
+    const request = pool.request();
+    let query = `
+      SELECT
+        calendarId,
+        EmpID,
+        entryCategory,
+        entryType,
+        title,
+        description,
+        startDateTime,
+        endDateTime
+      FROM dbo.employeeCalendar
+      WHERE (
+        referenceTable = N'employeeCalendar:schedule'
+        OR entryCategory IN (N'PROJECT', N'DEADLINE', N'TASK')
+      )
+    `;
+    if (actorEmpId) {
+      request.input("EmpID", sql.Int, actorEmpId);
+      query += ` AND EmpID = @EmpID`;
+    }
+    query += ` ORDER BY calendarId DESC`;
+
+    const result = await request.query(query);
+    return result.recordset.map((row) => {
+      const metadata = parseScheduleMetadata(row.description) || {};
+      const range = metadata.range || inferRangeFromEntryType(row.entryType);
+      return {
+        id: Number(row.calendarId),
+        range,
+        day: metadata.day || inferScheduleDay(row.startDateTime, range),
+        title: row.title,
+        note: metadata.note || normalizeText(row.description),
+        color: metadata.color || "#2563eb"
+      };
+    });
+  }
+
+  async function getCalendarMeetings(actorEmpId) {
+    const pool = await getPool();
+    const meetingFields = await getMeetingFieldSupport();
+    const request = pool.request();
+    let query = `
+      SELECT
+        calendarId,
+        EmpID,
+        title,
+        description,
+        startDateTime,
+        endDateTime,
+        ${meetingFields.location ? "meetingLocation" : "CAST(NULL AS NVARCHAR(300)) AS meetingLocation"},
+        ${meetingFields.link ? "meetingLink" : "CAST(NULL AS NVARCHAR(500)) AS meetingLink"},
+        ${meetingFields.summary ? "meetingSummary" : "CAST(NULL AS NVARCHAR(MAX)) AS meetingSummary"}
+      FROM dbo.employeeCalendar
+      WHERE entryCategory = N'MEETING'
+    `;
+    if (actorEmpId) {
+      request.input("EmpID", sql.Int, actorEmpId);
+      query += ` AND EmpID = @EmpID`;
+    }
+    query += ` ORDER BY startDateTime ASC, calendarId DESC`;
+
+    const result = await request.query(query);
+    return result.recordset.map(mapCalendarMeetingRow);
+  }
+
+  async function getCalendarLeaveEvents(actorEmpId) {
+    const pool = await getPool();
+    const request = pool.request();
+    let query = `
+      SELECT
+        calendarId,
+        EmpID,
+        entryType,
+        title,
+        startDateTime,
+        endDateTime,
+        leaveDays,
+        entryStatus
+      FROM dbo.employeeCalendar
+      WHERE entryCategory = N'LEAVE'
+        AND entryType IN (N'CL', N'PL', N'UNPAID')
+        AND entryStatus = N'APPROVED'
+    `;
+    if (actorEmpId) {
+      request.input("EmpID", sql.Int, actorEmpId);
+      query += ` AND EmpID = @EmpID`;
+    }
+    query += ` ORDER BY startDateTime ASC, calendarId ASC`;
+
+    const result = await request.query(query);
+    return result.recordset.map((row) => ({
+      id: Number(row.calendarId),
+      empId: Number(row.EmpID),
+      type: row.entryType,
+      title: row.title,
+      startDate: formatLocalDate(row.startDateTime),
+      endDate: formatLocalDate(row.endDateTime || row.startDateTime),
+      leaveDays: Number(row.leaveDays || 0),
+      status: row.entryStatus
+    }));
+  }
+
+  async function getCalendarHolidaySummaries(actorEmpId) {
+    const pool = await getPool();
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
+    const holidays = [];
+
+    const ledgerProcedureResult = await pool.request()
+      .input("procedure_name", sql.NVarChar(128), "usp_EmployeeCalendarLeaveLedger")
+      .query(`
+        SELECT CASE
+          WHEN OBJECT_ID(N'dbo.' + @procedure_name, N'P') IS NULL THEN 0
+          ELSE 1
+        END AS exists_flag
+      `);
+
+    if (ledgerProcedureResult.recordset[0]?.exists_flag) {
+      const ledgerRequest = pool.request()
+        .input("CalendarYear", sql.Int, currentYear);
+      if (actorEmpId) {
+        ledgerRequest.input("EmpID", sql.Int, actorEmpId);
+      } else {
+        ledgerRequest.input("EmpID", sql.Int, null);
+      }
+
+      const ledgerResult = await ledgerRequest.query(`
+        EXEC dbo.usp_EmployeeCalendarLeaveLedger
+          @EmpID = @EmpID,
+          @CalendarYear = @CalendarYear
+      `);
+
+      const monthRow = ledgerResult.recordset.find((row) => Number(row.CalendarMonth) === currentMonth);
+      if (monthRow) {
+        holidays.push(
+          {
+            id: -101,
+            name: "CL Holiday",
+            used: Number(monthRow.UsedCL || 0),
+            total: Number(monthRow.OpeningCL || 0) + Number(monthRow.CreditedCL || 0),
+            editable: false
+          },
+          {
+            id: -102,
+            name: "PL Holiday",
+            used: Number(monthRow.UsedPL || 0),
+            total: Number(monthRow.AvailablePLBeforeUse || 0),
+            editable: false
+          },
+          {
+            id: -103,
+            name: "Unpaid Holiday",
+            used: Number(monthRow.UnpaidUsed || 0),
+            total: Number(monthRow.UnpaidUsed || 0),
+            editable: false
+          }
+        );
+      }
+    }
+
+    if (!holidays.length) {
+      holidays.push(
+        { id: -101, name: "CL Holiday", used: 0, total: 1, editable: false },
+        { id: -102, name: "PL Holiday", used: 0, total: 5, editable: false },
+        { id: -103, name: "Unpaid Holiday", used: 0, total: 0, editable: false }
+      );
+    }
+
+    const customRequest = pool.request();
+    let customQuery = `
+      SELECT
+        calendarId,
+        EmpID,
+        title,
+        description
+      FROM dbo.employeeCalendar
+      WHERE entryCategory = N'HOLIDAY'
+        AND entryType = N'SUMMARY'
+    `;
+    if (actorEmpId) {
+      customRequest.input("EmpID", sql.Int, actorEmpId);
+      customQuery += ` AND EmpID = @EmpID`;
+    }
+    customQuery += ` ORDER BY calendarId DESC`;
+
+    const customResult = await customRequest.query(customQuery);
+    for (const row of customResult.recordset) {
+      const metadata = parseHolidaySummaryMetadata(row.description);
+      if (!metadata || isDerivedHolidayName(row.title)) {
+        continue;
+      }
+      holidays.push({
+        id: Number(row.calendarId),
+        name: row.title,
+        used: Number(metadata.used || 0),
+        total: Number(metadata.total || 0),
+        editable: true
+      });
+    }
+
+    return holidays;
+  }
+
+  async function getCalendarPublicHolidays() {
+    const pool = await getPool();
+    const currentYear = new Date().getFullYear();
+    const result = await pool.request()
+      .input("currentYear", sql.Int, currentYear)
+      .query(`
+        SELECT
+          calendarId,
+          EmpID,
+          title,
+          description,
+          startDateTime
+        FROM dbo.employeeCalendar
+        WHERE entryCategory = N'HOLIDAY'
+          AND entryType = N'PUBLIC_HOLIDAY'
+          AND YEAR(startDateTime) = @currentYear
+        ORDER BY startDateTime ASC, calendarId ASC
+      `);
+
+    return result.recordset.map((row) => ({
+      id: Number(row.calendarId),
+      empId: Number(row.EmpID),
+      name: row.title,
+      holidayDate: formatLocalDate(row.startDateTime),
+      year: coerceDate(row.startDateTime)?.getFullYear() || currentYear,
+      month: formatMonthName(row.startDateTime),
+      date: coerceDate(row.startDateTime)?.getDate() || 0,
+      day: formatDayName(row.startDateTime),
+      description: row.description || ""
+    }));
+  }
+
   async function getBootstrap(actor) {
     const pool = await getPool();
     const actorEmpId = await getActorEmpId(actor);
+    const useUnifiedCalendar = await hasUnifiedEmployeeCalendar();
 
     const usersResult = await pool.request().query(`
       SELECT
@@ -249,7 +752,9 @@ function createSqlServerStore() {
     }
 
     let schedules = [];
-    if (await tableExists("employeeSchedule")) {
+    if (useUnifiedCalendar) {
+      schedules = await getCalendarSchedules(actorEmpId);
+    } else if (await tableExists("employeeSchedule")) {
       const request = pool.request();
       let query = `
         SELECT
@@ -281,7 +786,9 @@ function createSqlServerStore() {
     }
 
     let meetings = [];
-    if (await tableExists("employeeMeeting")) {
+    if (useUnifiedCalendar) {
+      meetings = await getCalendarMeetings(actorEmpId);
+    } else if (await tableExists("employeeMeeting")) {
       const request = pool.request();
       let query = `
         SELECT
@@ -301,16 +808,13 @@ function createSqlServerStore() {
       }
       query += ` ORDER BY meetingId DESC`;
       const result = await request.query(query);
-      meetings = result.recordset.map((row) => ({
-        id: Number(row.meetingId),
-        title: row.meetingTitle,
-        meta: formatMeetingMeta(row),
-        notes: row.meetingDescription || ""
-      }));
+      meetings = result.recordset.map(mapLegacyMeetingRow);
     }
 
     let holidays = [];
-    if (await tableExists("CL_Holiday") && await tableExists("PL_Holiday") && await tableExists("Unpaid_Holiday")) {
+    if (useUnifiedCalendar) {
+      holidays = await getCalendarHolidaySummaries(actorEmpId);
+    } else if (await tableExists("CL_Holiday") && await tableExists("PL_Holiday") && await tableExists("Unpaid_Holiday")) {
       const currentYear = new Date().getFullYear();
       const request = pool.request().input("holiday_year", sql.Int, currentYear);
       let filter = "";
@@ -349,6 +853,8 @@ function createSqlServerStore() {
       users,
       projects,
       holidays,
+      publicHolidays: useUnifiedCalendar ? await getCalendarPublicHolidays() : [],
+      leaveEvents: useUnifiedCalendar ? await getCalendarLeaveEvents(actorEmpId) : [],
       todos: [],
       meetings,
       schedules,
@@ -507,13 +1013,63 @@ function createSqlServerStore() {
   }
 
   async function createSchedule(payload, actor) {
-    if (!(await tableExists("employeeSchedule"))) {
-      throw new Error("employeeSchedule table is not available in the database.");
-    }
-
     const empId = await getEffectiveEmpId(actor);
     if (!empId) {
       throw new Error("No employee is available for schedule creation.");
+    }
+
+    if (await hasUnifiedEmployeeCalendar()) {
+      const pool = await getPool();
+      const scheduleDate = buildScheduleDate(payload.range, payload.day);
+      const result = await pool.request()
+        .input("EmpID", sql.Int, empId)
+        .input("entryType", sql.NVarChar(40), `${payload.range[0].toUpperCase()}${payload.range.slice(1)}`)
+        .input("title", sql.NVarChar(200), payload.title)
+        .input("description", sql.NVarChar(sql.MAX), buildScheduleMetadata(payload))
+        .input("startDateTime", sql.DateTime2, scheduleDate)
+        .input("endDateTime", sql.DateTime2, scheduleDate)
+        .query(`
+          INSERT INTO dbo.employeeCalendar (
+            EmpID,
+            entryCategory,
+            entryType,
+            title,
+            description,
+            startDateTime,
+            endDateTime,
+            isAllDay,
+            leaveDays,
+            entryStatus,
+            referenceTable
+          )
+          OUTPUT inserted.calendarId
+          VALUES (
+            @EmpID,
+            N'GENERAL',
+            @entryType,
+            @title,
+            @description,
+            @startDateTime,
+            @endDateTime,
+            1,
+            0,
+            N'ACTIVE',
+            N'employeeCalendar:schedule'
+          )
+        `);
+
+      return {
+        id: Number(result.recordset[0].calendarId),
+        range: payload.range,
+        day: payload.day,
+        title: payload.title,
+        note: payload.note,
+        color: payload.color
+      };
+    }
+
+    if (!(await tableExists("employeeSchedule"))) {
+      throw new Error("employeeSchedule table is not available in the database.");
     }
 
     const scheduleTypeId = await getLookupId("scheduleType", "scheduleTypeId", "scheduleType", `${payload.range[0].toUpperCase()}${payload.range.slice(1)}`);
@@ -553,11 +1109,61 @@ function createSqlServerStore() {
   }
 
   async function updateSchedule(id, payload, actor) {
+    const empId = await getActorEmpId(actor);
+    if (await hasUnifiedEmployeeCalendar()) {
+      const pool = await getPool();
+      const metadata = buildScheduleMetadata({
+        range: payload.range || "weekly",
+        day: payload.day || "",
+        note: payload.note || "",
+        color: payload.color || "#2563eb"
+      });
+      const scheduleDate = buildScheduleDate(payload.range || "weekly", payload.day || "Mon");
+      const request = pool.request()
+        .input("calendarId", sql.Int, Number(id))
+        .input("entryType", sql.NVarChar(40), payload.range ? `${payload.range[0].toUpperCase()}${payload.range.slice(1)}` : null)
+        .input("title", sql.NVarChar(200), payload.title ?? null)
+        .input("description", sql.NVarChar(sql.MAX), metadata)
+        .input("startDateTime", sql.DateTime2, scheduleDate)
+        .input("endDateTime", sql.DateTime2, scheduleDate);
+      if (empId) {
+        request.input("EmpID", sql.Int, empId);
+      }
+
+      const result = await request.query(`
+        UPDATE dbo.employeeCalendar
+        SET
+          entryType = COALESCE(@entryType, entryType),
+          title = COALESCE(@title, title),
+          description = COALESCE(@description, description),
+          startDateTime = COALESCE(@startDateTime, startDateTime),
+          endDateTime = COALESCE(@endDateTime, endDateTime)
+        OUTPUT inserted.calendarId, inserted.entryType, inserted.title, inserted.description, inserted.startDateTime
+        WHERE calendarId = @calendarId
+          AND referenceTable = N'employeeCalendar:schedule'
+          ${empId ? "AND EmpID = @EmpID" : ""}
+      `);
+
+      const row = result.recordset[0];
+      if (!row) {
+        return null;
+      }
+      const parsed = parseScheduleMetadata(row.description) || {};
+      const range = parsed.range || inferRangeFromEntryType(row.entryType);
+      return {
+        id: Number(row.calendarId),
+        range,
+        day: parsed.day || inferScheduleDay(row.startDateTime, range),
+        title: row.title,
+        note: parsed.note || "",
+        color: parsed.color || "#2563eb"
+      };
+    }
+
     if (!(await tableExists("employeeSchedule"))) {
       return null;
     }
 
-    const empId = await getActorEmpId(actor);
     const scheduleTypeId = payload.range
       ? await getLookupId("scheduleType", "scheduleTypeId", "scheduleType", `${payload.range[0].toUpperCase()}${payload.range.slice(1)}`)
       : null;
@@ -600,11 +1206,29 @@ function createSqlServerStore() {
   }
 
   async function deleteSchedule(id, actor) {
+    const empId = await getActorEmpId(actor);
+    if (await hasUnifiedEmployeeCalendar()) {
+      const pool = await getPool();
+      const request = pool.request().input("calendarId", sql.Int, Number(id));
+      if (empId) {
+        request.input("EmpID", sql.Int, empId);
+      }
+
+      const result = await request.query(`
+        DELETE FROM dbo.employeeCalendar
+        OUTPUT deleted.calendarId
+        WHERE calendarId = @calendarId
+          AND referenceTable = N'employeeCalendar:schedule'
+          ${empId ? "AND EmpID = @EmpID" : ""}
+      `);
+
+      return Boolean(result.recordset[0]);
+    }
+
     if (!(await tableExists("employeeSchedule"))) {
       return false;
     }
 
-    const empId = await getActorEmpId(actor);
     const pool = await getPool();
     const request = pool.request().input("scheduleId", sql.Int, Number(id));
     if (empId) {
@@ -621,23 +1245,207 @@ function createSqlServerStore() {
     return Boolean(result.recordset[0]);
   }
 
+  async function createMeeting(payload, actor) {
+    const empId = await getEffectiveEmpId(actor);
+    if (!empId) {
+      throw new Error("No employee is available for meeting creation.");
+    }
+
+    if (await hasUnifiedEmployeeCalendar()) {
+      const pool = await getPool();
+      const meetingFields = await getMeetingFieldSupport();
+      const startDateTime = coerceDate(payload.startDateTime);
+      const endDateTime = coerceDate(payload.endDateTime || payload.startDateTime);
+      if (!startDateTime || !endDateTime) {
+        throw new Error("Meeting date and time are required.");
+      }
+
+      const columns = [
+        "EmpID",
+        "entryCategory",
+        "entryType",
+        "title",
+        "description",
+        "startDateTime",
+        "endDateTime",
+        "isAllDay",
+        "leaveDays",
+        "entryStatus",
+        "referenceTable"
+      ];
+      const values = [
+        "@EmpID",
+        "N'MEETING'",
+        "N'MEETING'",
+        "@title",
+        "@description",
+        "@startDateTime",
+        "@endDateTime",
+        "0",
+        "0",
+        "N'ACTIVE'",
+        "N'employeeCalendar:meeting'"
+      ];
+      if (meetingFields.location) {
+        columns.push("meetingLocation");
+        values.push("@meetingLocation");
+      }
+      if (meetingFields.link) {
+        columns.push("meetingLink");
+        values.push("@meetingLink");
+      }
+      if (meetingFields.summary) {
+        columns.push("meetingSummary");
+        values.push("@meetingSummary");
+      }
+
+      const result = await pool.request()
+        .input("EmpID", sql.Int, empId)
+        .input("title", sql.NVarChar(200), payload.title)
+        .input("description", sql.NVarChar(sql.MAX), payload.notes || "")
+        .input("startDateTime", sql.DateTime2, startDateTime)
+        .input("endDateTime", sql.DateTime2, endDateTime)
+        .input("meetingLocation", sql.NVarChar(300), payload.location || null)
+        .input("meetingLink", sql.NVarChar(500), payload.link || null)
+        .input("meetingSummary", sql.NVarChar(sql.MAX), payload.summary || null)
+        .query(`
+          INSERT INTO dbo.employeeCalendar (${columns.join(", ")})
+          OUTPUT
+            inserted.calendarId,
+            inserted.title,
+            inserted.description,
+            inserted.startDateTime,
+            inserted.endDateTime,
+            ${meetingFields.location ? "inserted.meetingLocation" : "CAST(NULL AS NVARCHAR(300)) AS meetingLocation"},
+            ${meetingFields.link ? "inserted.meetingLink" : "CAST(NULL AS NVARCHAR(500)) AS meetingLink"},
+            ${meetingFields.summary ? "inserted.meetingSummary" : "CAST(NULL AS NVARCHAR(MAX)) AS meetingSummary"}
+          VALUES (${values.join(", ")})
+        `);
+
+      return mapCalendarMeetingRow(result.recordset[0]);
+    }
+
+    if (!(await tableExists("employeeMeeting"))) {
+      throw new Error("employeeMeeting table is not available in the database.");
+    }
+
+    const pool = await getPool();
+    const result = await pool.request()
+      .input("EmpID", sql.Int, empId)
+      .input("meetingTitle", sql.NVarChar(200), payload.title)
+      .input("meetingDescription", sql.NVarChar(500), payload.notes || "")
+      .input("meetingDate", sql.Date, formatLocalDate(payload.startDateTime))
+      .input("startTime", sql.Time, formatLocalTime(payload.startDateTime) || "00:00")
+      .input("endTime", sql.Time, formatLocalTime(payload.endDateTime || payload.startDateTime) || formatLocalTime(payload.startDateTime) || "00:00")
+      .input("meetingLink", sql.NVarChar(300), payload.link || null)
+      .query(`
+        INSERT INTO dbo.employeeMeeting (
+          EmpID,
+          meetingTitle,
+          meetingDescription,
+          meetingDate,
+          startTime,
+          endTime,
+          meetingLink
+        )
+        OUTPUT
+          inserted.meetingId,
+          inserted.meetingTitle,
+          inserted.meetingDescription,
+          inserted.meetingDate,
+          inserted.startTime,
+          inserted.endTime,
+          inserted.meetingLink
+        VALUES (
+          @EmpID,
+          @meetingTitle,
+          @meetingDescription,
+          @meetingDate,
+          @startTime,
+          @endTime,
+          @meetingLink
+        )
+      `);
+
+    return mapLegacyMeetingRow(result.recordset[0]);
+  }
+
   async function updateMeeting(id, payload, actor) {
+    const empId = await getActorEmpId(actor);
+    if (await hasUnifiedEmployeeCalendar()) {
+      const pool = await getPool();
+      const meetingFields = await getMeetingFieldSupport();
+      const request = pool.request()
+        .input("calendarId", sql.Int, Number(id))
+        .input("title", sql.NVarChar(200), payload.title ?? null)
+        .input("description", sql.NVarChar(sql.MAX), payload.notes ?? null)
+        .input("startDateTime", sql.DateTime2, payload.startDateTime ? coerceDate(payload.startDateTime) : null)
+        .input("endDateTime", sql.DateTime2, payload.endDateTime ? coerceDate(payload.endDateTime) : null)
+        .input("meetingLocation", sql.NVarChar(300), payload.location ?? null)
+        .input("meetingLink", sql.NVarChar(500), payload.link ?? null)
+        .input("meetingSummary", sql.NVarChar(sql.MAX), payload.summary ?? null);
+      if (empId) {
+        request.input("EmpID", sql.Int, empId);
+      }
+
+      const result = await request.query(`
+        UPDATE dbo.employeeCalendar
+        SET
+          title = COALESCE(@title, title),
+          description = COALESCE(@description, description),
+          startDateTime = COALESCE(@startDateTime, startDateTime),
+          endDateTime = COALESCE(@endDateTime, endDateTime)
+          ${meetingFields.location ? ", meetingLocation = COALESCE(@meetingLocation, meetingLocation)" : ""}
+          ${meetingFields.link ? ", meetingLink = COALESCE(@meetingLink, meetingLink)" : ""}
+          ${meetingFields.summary ? ", meetingSummary = COALESCE(@meetingSummary, meetingSummary)" : ""}
+        OUTPUT
+          inserted.calendarId,
+          inserted.title,
+          inserted.description,
+          inserted.startDateTime,
+          inserted.endDateTime,
+          ${meetingFields.location ? "inserted.meetingLocation" : "CAST(NULL AS NVARCHAR(300)) AS meetingLocation"},
+          ${meetingFields.link ? "inserted.meetingLink" : "CAST(NULL AS NVARCHAR(500)) AS meetingLink"},
+          ${meetingFields.summary ? "inserted.meetingSummary" : "CAST(NULL AS NVARCHAR(MAX)) AS meetingSummary"}
+        WHERE calendarId = @calendarId
+          AND entryCategory = N'MEETING'
+          ${empId ? "AND EmpID = @EmpID" : ""}
+      `);
+
+      const row = result.recordset[0];
+      if (!row) {
+        return null;
+      }
+
+      return mapCalendarMeetingRow(row);
+    }
+
     if (!(await tableExists("employeeMeeting"))) {
       return null;
     }
 
-    const empId = await getActorEmpId(actor);
     const pool = await getPool();
     const request = pool.request()
       .input("meetingId", sql.Int, Number(id))
-      .input("meetingDescription", sql.NVarChar(500), payload.notes ?? null);
+      .input("meetingTitle", sql.NVarChar(200), payload.title ?? null)
+      .input("meetingDescription", sql.NVarChar(500), payload.notes ?? null)
+      .input("meetingDate", sql.Date, payload.startDateTime ? formatLocalDate(payload.startDateTime) : null)
+      .input("startTime", sql.Time, payload.startDateTime ? formatLocalTime(payload.startDateTime) || "00:00" : null)
+      .input("endTime", sql.Time, payload.endDateTime ? formatLocalTime(payload.endDateTime) || formatLocalTime(payload.startDateTime) || "00:00" : null)
+      .input("meetingLink", sql.NVarChar(300), payload.link ?? null);
     if (empId) {
       request.input("EmpID", sql.Int, empId);
     }
 
     const result = await request.query(`
       UPDATE dbo.employeeMeeting
-      SET meetingDescription = COALESCE(@meetingDescription, meetingDescription)
+      SET
+        meetingTitle = COALESCE(@meetingTitle, meetingTitle),
+        meetingDescription = COALESCE(@meetingDescription, meetingDescription),
+        meetingDate = COALESCE(@meetingDate, meetingDate),
+        startTime = COALESCE(@startTime, startTime),
+        endTime = COALESCE(@endTime, endTime),
+        meetingLink = COALESCE(@meetingLink, meetingLink)
       OUTPUT
         inserted.meetingId,
         inserted.meetingTitle,
@@ -655,11 +1463,266 @@ function createSqlServerStore() {
       return null;
     }
 
+    return mapLegacyMeetingRow(row);
+  }
+
+  async function deleteMeeting(id, actor) {
+    const empId = await getActorEmpId(actor);
+    if (await hasUnifiedEmployeeCalendar()) {
+      const pool = await getPool();
+      const request = pool.request().input("calendarId", sql.Int, Number(id));
+      if (empId) {
+        request.input("EmpID", sql.Int, empId);
+      }
+
+      const result = await request.query(`
+        DELETE FROM dbo.employeeCalendar
+        OUTPUT deleted.calendarId
+        WHERE calendarId = @calendarId
+          AND entryCategory = N'MEETING'
+          ${empId ? "AND EmpID = @EmpID" : ""}
+      `);
+
+      return Boolean(result.recordset[0]);
+    }
+
+    if (!(await tableExists("employeeMeeting"))) {
+      return false;
+    }
+
+    const pool = await getPool();
+    const request = pool.request().input("meetingId", sql.Int, Number(id));
+    if (empId) {
+      request.input("EmpID", sql.Int, empId);
+    }
+
+    const result = await request.query(`
+      DELETE FROM dbo.employeeMeeting
+      OUTPUT deleted.meetingId
+      WHERE meetingId = @meetingId
+        ${empId ? "AND EmpID = @EmpID" : ""}
+    `);
+
+    return Boolean(result.recordset[0]);
+  }
+
+  async function createHoliday(payload, actor) {
+    if (!(await hasUnifiedEmployeeCalendar())) {
+      throw new Error("Holiday is not connected to the current database schema yet.");
+    }
+
+    const empId = await getEffectiveEmpId(actor);
+    if (!empId) {
+      throw new Error("No employee is available for holiday creation.");
+    }
+
+    if (payload.holidayDate) {
+      const holidayDate = normalizeHolidayDate(payload.holidayDate);
+      if (!holidayDate) {
+        throw new Error("A valid holiday date is required.");
+      }
+
+      const pool = await getPool();
+      const existing = await pool.request()
+        .input("title", sql.NVarChar(200), payload.name)
+        .input("holidayDate", sql.Date, holidayDate)
+        .query(`
+          SELECT TOP 1 calendarId
+          FROM dbo.employeeCalendar
+          WHERE entryCategory = N'HOLIDAY'
+            AND entryType = N'PUBLIC_HOLIDAY'
+            AND title = @title
+            AND CAST(startDateTime AS DATE) = @holidayDate
+        `);
+
+      if (existing.recordset[0]) {
+        throw new Error("That public holiday already exists for the selected date.");
+      }
+
+      const result = await pool.request()
+        .input("EmpID", sql.Int, empId)
+        .input("title", sql.NVarChar(200), payload.name)
+        .input("description", sql.NVarChar(1000), null)
+        .input("startDateTime", sql.DateTime2, holidayDate)
+        .query(`
+          INSERT INTO dbo.employeeCalendar (
+            EmpID,
+            entryCategory,
+            entryType,
+            title,
+            description,
+            startDateTime,
+            endDateTime,
+            isAllDay,
+            leaveDays,
+            entryStatus
+          )
+          OUTPUT inserted.calendarId, inserted.EmpID, inserted.title, inserted.startDateTime, inserted.description
+          VALUES (
+            @EmpID,
+            N'HOLIDAY',
+            N'PUBLIC_HOLIDAY',
+            @title,
+            @description,
+            @startDateTime,
+            @startDateTime,
+            1,
+            0,
+            N'ACTIVE'
+          )
+        `);
+
+      const row = result.recordset[0];
+      return {
+        id: Number(row.calendarId),
+        empId: Number(row.EmpID),
+        name: row.title,
+        holidayDate: formatLocalDate(row.startDateTime),
+        year: coerceDate(row.startDateTime)?.getFullYear() || 0,
+        month: formatMonthName(row.startDateTime),
+        date: coerceDate(row.startDateTime)?.getDate() || 0,
+        day: formatDayName(row.startDateTime),
+        description: row.description || ""
+      };
+    }
+
+    if (isDerivedHolidayName(payload.name)) {
+      throw new Error("CL, PL, and Unpaid balances are calculated automatically from employeeCalendar leave entries.");
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const pool = await getPool();
+    const result = await pool.request()
+      .input("EmpID", sql.Int, empId)
+      .input("title", sql.NVarChar(200), payload.name)
+      .input("description", sql.NVarChar(sql.MAX), buildHolidaySummaryMetadata(payload))
+      .input("startDateTime", sql.DateTime2, today)
+      .query(`
+        INSERT INTO dbo.employeeCalendar (
+          EmpID,
+          entryCategory,
+          entryType,
+          title,
+          description,
+          startDateTime,
+          endDateTime,
+          isAllDay,
+          leaveDays,
+          entryStatus
+        )
+        OUTPUT inserted.calendarId
+        VALUES (
+          @EmpID,
+          N'HOLIDAY',
+          N'SUMMARY',
+          @title,
+          @description,
+          @startDateTime,
+          @startDateTime,
+          1,
+          0,
+          N'ACTIVE'
+        )
+      `);
+
     return {
-      id: Number(row.meetingId),
-      title: row.meetingTitle,
-      meta: formatMeetingMeta(row),
-      notes: row.meetingDescription || ""
+      id: Number(result.recordset[0].calendarId),
+      name: payload.name,
+      used: Number(payload.used || 0),
+      total: Number(payload.total || 0),
+      editable: true
+    };
+  }
+
+  async function updateHoliday(id, payload, actor) {
+    if (!(await hasUnifiedEmployeeCalendar())) {
+      return null;
+    }
+
+    const empId = await getActorEmpId(actor);
+    const pool = await getPool();
+
+    if (payload.holidayDate !== undefined) {
+      const holidayDate = normalizeHolidayDate(payload.holidayDate);
+      if (!holidayDate) {
+        throw new Error("A valid holiday date is required.");
+      }
+
+      const request = pool.request()
+        .input("calendarId", sql.Int, Number(id))
+        .input("title", sql.NVarChar(200), payload.name ?? null)
+        .input("startDateTime", sql.DateTime2, holidayDate);
+      if (empId) {
+        request.input("EmpID", sql.Int, empId);
+      }
+
+      const result = await request.query(`
+        UPDATE dbo.employeeCalendar
+        SET
+          title = COALESCE(@title, title),
+          startDateTime = @startDateTime,
+          endDateTime = @startDateTime
+        OUTPUT inserted.calendarId, inserted.EmpID, inserted.title, inserted.startDateTime, inserted.description
+        WHERE calendarId = @calendarId
+          AND entryCategory = N'HOLIDAY'
+          AND entryType = N'PUBLIC_HOLIDAY'
+          ${empId ? "AND EmpID = @EmpID" : ""}
+      `);
+
+      const row = result.recordset[0];
+      if (!row) {
+        return null;
+      }
+      return {
+        id: Number(row.calendarId),
+        empId: Number(row.EmpID),
+        name: row.title,
+        holidayDate: formatLocalDate(row.startDateTime),
+        year: coerceDate(row.startDateTime)?.getFullYear() || 0,
+        month: formatMonthName(row.startDateTime),
+        date: coerceDate(row.startDateTime)?.getDate() || 0,
+        day: formatDayName(row.startDateTime),
+        description: row.description || ""
+      };
+    }
+
+    if (payload.name && isDerivedHolidayName(payload.name)) {
+      throw new Error("CL, PL, and Unpaid balances are calculated automatically from employeeCalendar leave entries.");
+    }
+
+    const request = pool.request()
+      .input("calendarId", sql.Int, Number(id))
+      .input("title", sql.NVarChar(200), payload.name ?? null)
+      .input("description", sql.NVarChar(sql.MAX), buildHolidaySummaryMetadata(payload));
+    if (empId) {
+      request.input("EmpID", sql.Int, empId);
+    }
+
+    const result = await request.query(`
+      UPDATE dbo.employeeCalendar
+      SET
+        title = COALESCE(@title, title),
+        description = COALESCE(@description, description)
+      OUTPUT inserted.calendarId, inserted.title, inserted.description
+      WHERE calendarId = @calendarId
+        AND entryCategory = N'HOLIDAY'
+        AND entryType = N'SUMMARY'
+        ${empId ? "AND EmpID = @EmpID" : ""}
+    `);
+
+    const row = result.recordset[0];
+    if (!row) {
+      return null;
+    }
+    const metadata = parseHolidaySummaryMetadata(row.description) || { used: 0, total: 0 };
+    return {
+      id: Number(row.calendarId),
+      name: row.title,
+      used: Number(metadata.used || 0),
+      total: Number(metadata.total || 0),
+      editable: true
     };
   }
 
@@ -678,12 +1741,14 @@ function createSqlServerStore() {
     createSchedule,
     updateSchedule,
     deleteSchedule,
+    createMeeting,
     updateMeeting,
+    deleteMeeting,
     createFinance: unsupported("Finance"),
     updateFinance: unsupported("Finance"),
     deleteFinance: unsupported("Finance"),
-    createHoliday: unsupported("Holiday"),
-    updateHoliday: unsupported("Holiday"),
+    createHoliday,
+    updateHoliday,
     createTodo: unsupported("Task"),
     updateTodo: unsupported("Task"),
     deleteTodo: unsupported("Task")

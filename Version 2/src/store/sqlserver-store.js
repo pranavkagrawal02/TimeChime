@@ -1000,6 +1000,111 @@ function createSqlServerStore() {
     };
   }
 
+  async function checkUsernameExists(username) {
+    try {
+      const pool = await getPool();
+      const result = await pool.request()
+        .input("username", sql.NVarChar(100), normalizeText(username))
+        .query(`SELECT COUNT(*) as count FROM Login WHERE Username = @username`);
+      return result.recordset[0].count > 0;
+    } catch (error) {
+      console.error("Error checking username:", error);
+      return false;
+    }
+  }
+
+  async function checkEmailExists(email) {
+    try {
+      const pool = await getPool();
+      const result = await pool.request()
+        .input("email", sql.NVarChar(100), normalizeText(email))
+        .query(`SELECT COUNT(*) as count FROM Employee WHERE EmpEmail = @email`);
+      return result.recordset[0].count > 0;
+    } catch (error) {
+      console.error("Error checking email:", error);
+      return false;
+    }
+  }
+
+  async function registerNewEmployee(employeeData) {
+    try {
+      const pool = await getPool();
+
+      // Insert into Employee table
+      const employeeResult = await pool.request()
+        .input("EmpFirstName", sql.NVarChar(50), normalizeText(employeeData.firstName))
+        .input("EmpLastName", sql.NVarChar(50), normalizeText(employeeData.lastName))
+        .input("EmpName", sql.NVarChar(150), `${normalizeText(employeeData.firstName)} ${normalizeText(employeeData.lastName)}`)
+        .input("EmpEmail", sql.NVarChar(100), normalizeText(employeeData.email))
+        .input("EmpPhone", sql.NVarChar(20), normalizeText(employeeData.phone))
+        .input("EmpDept", sql.NVarChar(100), normalizeText(employeeData.department))
+        .input("EmpDesignation", sql.NVarChar(100), normalizeText(employeeData.designation))
+        .input("EmpStatus", sql.NVarChar(20), "Active")
+        .input("CreatedDate", sql.DateTime, new Date())
+        .input("UpdatedDate", sql.DateTime, new Date())
+        .query(`
+          INSERT INTO Employee
+            (EmpFirstName, EmpLastName, EmpName, EmpEmail, EmpPhone, EmpDept, EmpDesignation, EmpStatus, CreatedDate, UpdatedDate)
+          VALUES
+            (@EmpFirstName, @EmpLastName, @EmpName, @EmpEmail, @EmpPhone, @EmpDept, @EmpDesignation, @EmpStatus, @CreatedDate, @UpdatedDate)
+
+          SELECT SCOPE_IDENTITY() as EmpID
+        `);
+
+      const empID = employeeResult.recordset[0].EmpID;
+
+      // Insert into Login table
+      await pool.request()
+        .input("Username", sql.NVarChar(100), normalizeText(employeeData.username))
+        .input("Password", sql.NVarChar(255), employeeData.hashedPassword)
+        .input("EmpID", sql.Int, empID)
+        .input("IsActive", sql.Bit, 1)
+        .input("CreatedDate", sql.DateTime, new Date())
+        .input("UpdatedDate", sql.DateTime, new Date())
+        .query(`
+          INSERT INTO Login
+            (Username, Password, EmpID, IsActive, CreatedDate, UpdatedDate)
+          VALUES
+            (@Username, @Password, @EmpID, @IsActive, @CreatedDate, @UpdatedDate)
+        `);
+
+      return { empID };
+    } catch (error) {
+      console.error("Error registering employee:", error);
+      return { error: error.message };
+    }
+  }
+
+  async function getEmployeeById(empID) {
+    try {
+      const pool = await getPool();
+      const result = await pool.request()
+        .input("EmpID", sql.Int, empID)
+        .query(`
+          SELECT
+            E.EmpID,
+            E.EmpFirstName,
+            E.EmpLastName,
+            E.EmpName as EmpFullName,
+            E.EmpEmail,
+            E.EmpPhone,
+            E.EmpDept,
+            E.EmpDesignation,
+            E.EmpStatus,
+            E.CreatedDate,
+            L.Username
+          FROM Employee E
+          LEFT JOIN Login L ON E.EmpID = L.EmpID
+          WHERE E.EmpID = @EmpID
+        `);
+
+      return result.recordset[0] || null;
+    } catch (error) {
+      console.error("Error fetching employee:", error);
+      return null;
+    }
+  }
+
   async function createUser(payload, actor) {
     const nextId = await getNextEmpId();
     const names = splitName(payload.name);
@@ -1955,6 +2060,10 @@ function createSqlServerStore() {
     provider: "sqlserver",
     getBootstrap,
     validateLogin,
+    checkUsernameExists,
+    checkEmailExists,
+    registerNewEmployee,
+    getEmployeeById,
     createUser,
     createProject,
     updateProject,

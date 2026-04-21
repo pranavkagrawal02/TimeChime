@@ -16,6 +16,13 @@ const loginUsername = document.getElementById("loginUsername");
 const loginPassword = document.getElementById("loginPassword");
 const loginError = document.getElementById("loginError");
 
+// Phase 1: Registration
+const registrationForm = document.getElementById("registrationForm");
+const loginTabBtn = document.getElementById("loginTabBtn");
+const registerTabBtn = document.getElementById("registerTabBtn");
+const registrationError = document.getElementById("registrationError");
+const registrationSuccess = document.getElementById("registrationSuccess");
+
 // Phase 2: OTP
 const otpForm = document.getElementById("otpForm");
 const otpInput = document.getElementById("otpInput");
@@ -43,7 +50,37 @@ function showPhase(phaseElement) {
 function clearErrors() {
   loginError.textContent = "";
   otpError.textContent = "";
+  registrationError.textContent = "";
+  registrationSuccess.textContent = "";
 }
+
+// =====================================================
+// TAB TOGGLE: LOGIN vs REGISTRATION
+// =====================================================
+
+function toggleTab(tabName) {
+  // Hide/show forms
+  if (tabName === "login") {
+    loginForm.classList.remove("hidden");
+    loginForm.classList.add("active");
+    registrationForm.classList.add("hidden");
+    registrationForm.classList.remove("active");
+    loginTabBtn.classList.add("active");
+    registerTabBtn.classList.remove("active");
+  } else {
+    loginForm.classList.add("hidden");
+    loginForm.classList.remove("active");
+    registrationForm.classList.remove("hidden");
+    registrationForm.classList.add("active");
+    loginTabBtn.classList.remove("active");
+    registerTabBtn.classList.add("active");
+  }
+  clearErrors();
+}
+
+// Tab button event listeners
+loginTabBtn.addEventListener("click", () => toggleTab("login"));
+registerTabBtn.addEventListener("click", () => toggleTab("register"));
 
 // =====================================================
 // PHASE 1: LOGIN HANDLER
@@ -87,6 +124,96 @@ loginForm.addEventListener("submit", async (event) => {
   } catch (error) {
     console.error("Login error:", error);
     loginError.textContent = "Unable to connect to the server. Please try again.";
+  }
+});
+
+// =====================================================
+// PHASE 1: REGISTRATION HANDLER
+// =====================================================
+
+registrationForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  clearErrors();
+
+  // Get form values
+  const firstName = document.getElementById("regFirstName").value.trim();
+  const lastName = document.getElementById("regLastName").value.trim();
+  const email = document.getElementById("regEmail").value.trim();
+  const phone = document.getElementById("regPhone").value.trim();
+  const department = document.getElementById("regDepartment").value.trim();
+  const designation = document.getElementById("regDesignation").value.trim();
+  const username = document.getElementById("regUsername").value.trim();
+  const password = document.getElementById("regPassword").value;
+  const confirmPassword = document.getElementById("regConfirmPassword").value;
+
+  // Validate all fields
+  if (!firstName || !lastName || !email || !phone || !department || !designation || !username || !password || !confirmPassword) {
+    registrationError.textContent = "All fields are required";
+    return;
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    registrationError.textContent = "Please enter a valid email address";
+    return;
+  }
+
+  // Validate password length
+  if (password.length < 8) {
+    registrationError.textContent = "Password must be at least 8 characters";
+    return;
+  }
+
+  // Validate passwords match
+  if (password !== confirmPassword) {
+    registrationError.textContent = "Passwords do not match";
+    return;
+  }
+
+  // Validate username format (alphanumeric + dots/underscores)
+  const usernameRegex = /^[a-zA-Z0-9._]+$/;
+  if (!usernameRegex.test(username)) {
+    registrationError.textContent = "Username can only contain letters, numbers, dots, and underscores";
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        email,
+        phone,
+        department,
+        designation,
+        username,
+        password
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      registrationError.textContent = result.error || "Registration failed. Please try again.";
+      return;
+    }
+
+    // Success!
+    registrationSuccess.textContent = "✓ Registration successful! Please login with your new account.";
+    registrationForm.reset();
+
+    // Return to login tab after 2 seconds
+    setTimeout(() => {
+      toggleTab("login");
+      loginUsername.focus();
+    }, 2000);
+
+  } catch (error) {
+    console.error("Registration error:", error);
+    registrationError.textContent = "Unable to connect to the server. Please try again.";
   }
 });
 

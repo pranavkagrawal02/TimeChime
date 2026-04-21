@@ -12,6 +12,70 @@ function hashPassword(password) {
   return crypto.createHash("sha256").update(password + "timechime_salt_2026").digest("hex");
 }
 
+// ===== JSON File Creation Function =====
+async function createEmployeeJsonFile(empID, employeeData) {
+  try {
+    const empDetailsDir = path.join(ROOT, "EmpDetailsJSON");
+
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(empDetailsDir)) {
+      fs.mkdirSync(empDetailsDir, { recursive: true });
+    }
+
+    const firstName = employeeData.EmpFirstName || "Employee";
+    const fileName = `${empID}_${firstName}.json`;
+    const filePath = path.join(empDetailsDir, fileName);
+
+    const jsonData = {
+      empID: empID,
+      empFirstName: employeeData.EmpFirstName || "",
+      empLastName: employeeData.EmpLastName || "",
+      empFullName: employeeData.EmpFullName || "",
+      empDepartment: employeeData.EmpDept || "",
+      empPosition: employeeData.EmpDesignation || "",
+      empEmail: employeeData.EmpEmail || "",
+      empPhone: employeeData.EmpPhone || "",
+      empJoinDate: new Date().toISOString().split("T")[0],
+      empStatus: employeeData.EmpStatus || "Active",
+      empUsername: employeeData.Username || "",
+      empPassword: employeeData.Password || "",
+      empDesignation: employeeData.EmpDesignation || "",
+      createdAt: new Date().toISOString().split("T")[0],
+      updatedAt: new Date().toISOString().split("T")[0],
+      empImage: "profile_placeholder.jpg",
+      empAddress: "",
+      empCity: "",
+      empState: "",
+      empZipCode: "",
+      empCountry: "India",
+      emergencyContact: {
+        name: "TBD",
+        phone: "TBD",
+        relation: "TBD"
+      },
+      schedule: {
+        workingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        workingHours: "09:00-18:00",
+        officeLocation: "Head Office"
+      },
+      attendance: {
+        presentDays: 0,
+        absentDays: 0,
+        leaveDays: 0
+      },
+      notes: "Newly registered employee",
+      isActive: true
+    };
+
+    fs.writeFileSync(filePath, JSON.stringify(jsonData, null, 2), "utf8");
+    console.log(`Created JSON file: ${filePath}`);
+    return true;
+  } catch (error) {
+    console.error("Error creating JSON file:", error);
+    return false;
+  }
+}
+
 function loadEnvFile(filePath) {
   if (!fs.existsSync(filePath)) {
     return;
@@ -226,6 +290,12 @@ async function handleApi(request, response, pathname) {
       if (result.error) {
         sendJson(response, 400, { error: result.error });
         return;
+      }
+
+      // Fetch employee data to create JSON file
+      const employeeData = await store.getEmployeeById(result.empID);
+      if (employeeData) {
+        await createEmployeeJsonFile(result.empID, employeeData);
       }
 
       sendJson(response, 201, {

@@ -968,13 +968,17 @@ function createSqlServerStore() {
       .input("password", sql.NVarChar(255), String(password || ""))
       .query(`
         SELECT TOP 1
-          EmpID,
-          EmpUsername,
-          EmpFullName,
-          EmpDesignation
-        FROM dbo.users
-        WHERE (EmpUsername = @username OR EmpEmail = @username)
-          AND EmpPassword = @password
+          L.EmpID,
+          L.Username,
+          E.EmpFirstName,
+          E.EmpLastName,
+          E.EmpName,
+          E.EmpDept
+        FROM Login L
+        INNER JOIN Employee E ON L.EmpID = E.EmpID
+        WHERE L.Username = @username
+          AND L.Password = @password
+          AND L.IsActive = 1
       `);
 
     const user = result.recordset[0];
@@ -988,11 +992,11 @@ function createSqlServerStore() {
     }
 
     return {
-      username: user.EmpUsername,
-      role: user.EmpDesignation || "User",
+      username: user.Username,
+      role: user.EmpDept || "User",
       employeeCode: String(user.EmpID),
       employeeId: Number(user.EmpID),
-      name: user.EmpFullName || user.EmpUsername
+      name: user.EmpName || user.Username
     };
   }
 

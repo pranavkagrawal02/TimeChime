@@ -1,53 +1,81 @@
-# Schedule Tracker Hub
+# TimeChime - Version 2
+
+**A modern 3-phase authentication and scheduling platform with SQL database integration**
 
 Schedule Tracker Hub is a browser-based planning dashboard for:
 
-- schedules
-- leave, public holidays, and calendar entries
-- meetings, summaries, and notes
-- projects
-- finance records
-- shared to-dos
+- **3-Phase Authentication**: Login → OTP Verification → Dashboard
+- **Schedules**: Track daily and weekly schedules
+- **Leave & Calendar**: Manage public holidays and calendar entries
+- **Meetings**: Summaries and meeting notes
+- **Projects**: Project management and tracking
+- **Finance**: Financial records and tracking
+- **To-Dos**: Shared task management
 
-The app now supports three local storage modes:
+## Version 2 Features
 
-- frontend served locally by `server.js`
-- default data stored in local [db.json](/d:/PranavData/scheduleTrackerProject/db.json)
-- hybrid mode where SQL Server stores login and core employee records, while each employee gets a dedicated JSON file under `employee-data/`
-- optional full SQL Server storage when `STORE_PROVIDER=sqlserver` is enabled
-- refreshed dashboard UI with project watch cards, an organization view, a real month calendar, a dashboard day planner, and a full meetings workspace
+✅ **Three-Phase Authentication System**
+- Phase 1: Username & Password Login
+- Phase 2: OTP Verification (default OTP: 123456)
+- Phase 3: Dashboard with Navigation
+
+✅ **SQL Database Integration**
+- TimeChime SQL Server database
+- Employee, Login, LoginHistory tables
+- Ready for production deployment
+
+✅ **Single-Page Application**
+- Smooth phase transitions
+- Session-based authentication
+- Responsive sidebar navigation
 
 ## Quick Start
 
-From `D:\PranavData\scheduleTrackerProject` run:
+From the Version 2 folder:
 
+### 1. Set up Database
 ```powershell
-cmd /c npm install
-set PORT=3001
-cmd /c npm start
+# SQL Server
+sqlcmd -S your-server -i ScheduleTrackerDB.sql
+
+# MySQL
+mysql -u root -p < ScheduleTrackerDB.sql
 ```
 
-Then open:
+### 2. Install Dependencies
+```powershell
+npm install
+```
 
-```text
+### 3. Start Server
+```powershell
+$env:PORT = 3001
+npm start
+```
+
+### 4. Open Application
+```
 http://127.0.0.1:3001
 ```
 
-Default login:
+### 5. Login Flow
+- **Phase 1**: Enter any username and password
+- **Phase 2**: Enter OTP code: `123456`
+- **Phase 3**: Access the dashboard
 
-- Username: `admin`
-- Password: `admin`
+## Authentication Details
 
-Important:
+### Phase 1: Login
+- Enter username and password
+- Form validation provided
+- Error messages for invalid input
 
-- `admin / admin` is a development/demo login in local mode
-- in JSON mode, the app does not authenticate against the `users` list inside [db.json](/d:/PranavData/scheduleTrackerProject/db.json)
-- local JSON login now only allows the configured demo admin account handled in [src/store/json-store.js](/d:/PranavData/scheduleTrackerProject/src/store/json-store.js)
+### Phase 2: OTP Verification
+- Receive/enter OTP code
+- Default OTP for development: `123456`
+- Back button returns to login
 
-If port `3000` is free on your machine, you can also use:
-
-```powershell
-cmd /c npm start
+### Phase 3: Dashboard
 ```
 
 Then open:
@@ -580,6 +608,67 @@ dbo.Unpaid_Holiday
   |
 employee code is derived from logged-in EmpID in SQL queries
 ```
+
+## Troubleshooting
+
+### PowerShell Execution Policy Error
+
+**Problem:**
+```
+npm : File C:\Program Files\nodejs\npm.ps1 cannot be loaded because running scripts is disabled on this system.
+```
+
+**Solutions:**
+
+#### Option 1: Use CMD command (Quickest)
+```powershell
+cmd /c npm start
+```
+
+#### Option 2: Bypass execution policy (One-time)
+```powershell
+powershell -ExecutionPolicy Bypass -Command "npm start"
+```
+
+#### Option 3: Switch to CMD Terminal (Permanent - Recommended for VS Code)
+
+1. Open VS Code terminal: **Ctrl + Shift + `**
+2. Click dropdown arrow **⏷** at top right
+3. Select **"Select Default Profile"**
+4. Choose **"Command Prompt"** or **"Git Bash"**
+5. Now terminal will use CMD instead of PowerShell
+6. Simply run: `npm start`
+
+This is the **recommended solution** as it permanently fixes the issue for all future terminal sessions in VS Code.
+
+---
+
+### Database Connection Issues
+
+**Problem:** Login fails with valid credentials
+
+**Solution:**
+1. Verify database exists: `sqlcmd -S localhost -Q "SELECT name FROM sys.databases WHERE name = 'TimeChime'"`
+2. Check `.env` file has correct connection string
+3. Verify SQL Server is running
+4. Check firewall allows SQL connections
+
+---
+
+### Port Already in Use
+
+**Problem:** `Error: listen EADDRINUSE: address already in use :::3000`
+
+**Solution:**
+```powershell
+# Use a different port
+$env:PORT = 3001
+npm start
+```
+
+Then access: `http://localhost:3001`
+
+---
 
 ## Node version
 

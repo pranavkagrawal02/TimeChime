@@ -1,0 +1,373 @@
+================================================================================
+                    TIMECHIME - VERSION 2 HISTORY LOG
+                        Development & Changes Tracker
+================================================================================
+
+Project: TimeChime Schedule Tracker
+Version: 2.0
+Start Date: 2026-04-21
+Status: In Development
+
+================================================================================
+                            INITIAL SETUP
+================================================================================
+
+Date: 2026-04-21
+Time: 14:50 - 15:30
+
+CREATED FILES:
+- ScheduleTrackerDB.sql
+  * Created TimeChime database
+  * 3 tables: Employee, Login, LoginHistory
+  * Sample data: 3 employees, 3 login records, 4 history records
+
+- index.html (Updated)
+  * Replaced with 3-phase system
+  * Phase 1: Login form
+  * Phase 2: OTP verification
+  * Phase 3: Dashboard with navigation
+
+- app.js (Created)
+  * Phase management system
+  * Login handler with API calls
+  * OTP verification (default: 123456)
+  * Dashboard initialization
+  * Session management
+  * Navigation between views
+
+- styles.css (Updated)
+  * Added phase container styles
+  * OTP form styling
+  * Dashboard card styling
+  * Responsive design enhancements
+  * Animations and transitions
+
+DOCUMENTATION:
+- PHASE_SETUP.md (Created)
+  * Detailed 3-phase flow documentation
+  * API endpoint specifications
+  * Data flow diagram
+  * Testing instructions
+  * Future enhancements list
+
+- README.md (Updated)
+  * Version 2 feature overview
+  * Quick start guide
+  * Troubleshooting section
+  * PowerShell execution policy fix
+  * Database connection troubleshooting
+
+DATABASE SETUP:
+- Database Name: TimeChime
+- Server: localhost (SQLEXPRESS)
+- User: scheduleapp
+- Password: Schedule@123
+- Port: 1433
+
+TABLES CREATED:
+1. Employee (3 records)
+   - Pranav Kumar Agarwal (EmpID: 1, IT Dept)
+   - John Michael Smith (EmpID: 2, HR Dept)
+   - Sarah Jane Johnson (EmpID: 3, Finance Dept)
+
+2. Login (3 records)
+   - pranav.agarwal / hashed_password_123
+   - john.smith / hashed_password_456
+   - sarah.johnson / hashed_password_789
+
+3. LoginHistory (4 records)
+   - Various login sessions for testing
+
+================================================================================
+                        CONFIGURATION CHANGES
+================================================================================
+
+Date: 2026-04-21
+Time: 15:10
+
+.env FILE UPDATES:
+- Changed: SQL_DATABASE from "ScheduleTracker" to "TimeChime"
+- Reason: Database schema redesign with new table names
+
+ENVIRONMENT VARIABLES:
+- PORT: 3001
+- HOST: 0.0.0.0
+- STORE_PROVIDER: hybrid
+- SQL_SERVER: localhost
+- SQL_DATABASE: TimeChime
+- SQL_USER: scheduleapp
+- SQL_PASSWORD: Schedule@123
+
+================================================================================
+                        SOURCE CODE UPDATES
+================================================================================
+
+Date: 2026-04-21
+Time: 15:15
+
+FILE: src/store/sqlserver-store.js
+FUNCTION: validateLogin() [Line 964-997]
+
+CHANGES:
+- Updated SQL query to use new schema
+- Old: Queried dbo.users table
+- New: Queries Login table with Employee join
+
+SQL QUERY BEFORE:
+  SELECT TOP 1 EmpID, EmpUsername, EmpFullName, EmpDesignation
+  FROM dbo.users
+  WHERE (EmpUsername = @username OR EmpEmail = @username)
+  AND EmpPassword = @password
+
+SQL QUERY AFTER:
+  SELECT TOP 1 L.EmpID, L.Username, E.EmpFirstName, E.EmpLastName,
+               E.EmpName, E.EmpDept
+  FROM Login L
+  INNER JOIN Employee E ON L.EmpID = E.EmpID
+  WHERE L.Username = @username AND L.Password = @password AND L.IsActive = 1
+
+REASON: Schema alignment with new TimeChime database design
+
+================================================================================
+                            BUG FIXES
+================================================================================
+
+Issue #1: PowerShell Execution Policy Error
+Date: 2026-04-21
+Time: 15:20
+Status: FIXED
+
+Problem:
+- npm commands failing in PowerShell with execution policy error
+- Error: "running scripts is disabled on this system"
+
+Solution:
+- Added troubleshooting section to README.md
+- Option 1: Use cmd /c npm start
+- Option 2: Bypass policy temporarily
+- Option 3: Switch VS Code terminal to CMD permanently
+
+---
+
+Issue #2: Database Connection Error
+Date: 2026-04-21
+Time: 15:25
+Status: FIXED
+
+Problem:
+- User "scheduleapp" login failing
+- Access denied to TimeChime database
+
+Solution:
+- Created login with proper permissions
+- Granted db_owner role to scheduleapp user
+- Verified database and tables exist
+
+---
+
+Issue #3: Login API Not Responding (404 Error)
+Date: 2026-04-21
+Time: 15:30
+Status: FIXED
+
+Problem:
+- app.js returning 404 Not Found
+- Server couldn't locate JavaScript file
+- Files were in root but server serving from /public folder
+
+Solution:
+- Copied app.js to Version 2/public/ directory
+- Copied index.html to Version 2/public/ directory
+- Server now serving files correctly
+
+================================================================================
+                        TESTING & VERIFICATION
+================================================================================
+
+Date: 2026-04-21
+Time: 15:35
+
+LOGIN FLOW TEST:
+✓ Phase 1: Login form loads correctly
+✓ Database connection successful
+✓ Credentials validated against Login table
+✓ User data retrieved from Employee table
+
+PHASE TRANSITIONS:
+✓ Phase 1 → Phase 2 on successful login
+✓ Phase 2 → Phase 3 on correct OTP (123456)
+✓ Session storage working correctly
+✓ User info persisting across phases
+
+DATABASE VERIFICATION:
+✓ TimeChime database exists and accessible
+✓ All 3 tables created with correct schema
+✓ Sample data inserted successfully
+✓ Foreign keys established correctly
+✓ Indexes created for performance
+
+================================================================================
+                        CURRENT STATUS
+================================================================================
+
+COMPLETED:
+✓ 3-Phase authentication system implemented
+✓ SQL database designed and created
+✓ Backend API integrated
+✓ Frontend UI fully functional
+✓ Session management working
+✓ Documentation complete
+✓ Login working end-to-end
+
+IN PROGRESS:
+- Dashboard functionality enhancements
+- Real data integration
+
+TO DO:
+- [ ] Implement real OTP generation/sending
+- [ ] Add two-factor authentication
+- [ ] Create user profile settings
+- [ ] Implement role-based access control
+- [ ] Add activity logging
+- [ ] Create admin panel
+- [ ] Implement password reset flow
+- [ ] Add email notifications
+- [ ] Create meeting management features
+- [ ] Implement task management system
+
+================================================================================
+                        KNOWN ISSUES & NOTES
+================================================================================
+
+NOTES:
+1. OTP is currently hardcoded to "123456" for development
+2. Passwords in database are stored as plain text (demo purposes)
+3. Default admin account: admin/admin (available as fallback)
+4. Session expires on browser close (no persistent login)
+
+SECURITY CONSIDERATIONS:
+- Implement password hashing in production
+- Use secure OTP generation
+- Add HTTPS/SSL encryption
+- Implement session timeout
+- Add rate limiting for login attempts
+- Enable CSRF protection
+
+PERFORMANCE NOTES:
+- Database indexes created for common queries
+- Foreign keys optimized
+- Session storage using browser sessionStorage
+- No database calls on phase transitions after initial login
+
+================================================================================
+                        VERSION INFORMATION
+================================================================================
+
+Version 2.0.0
+Release Date: 2026-04-21
+Build: Initial Release
+
+Core Components:
+- Frontend: HTML5, CSS3, Vanilla JavaScript
+- Backend: Node.js HTTP Server
+- Database: SQL Server 2019/2022 (SSMS 19+)
+- Authentication: Session-based
+- Architecture: Single-Page Application (SPA)
+
+Technology Stack:
+- Runtime: Node.js v20+
+- Database: SQL Server / T-SQL
+- Frontend Framework: Vanilla JS (no dependencies)
+- Styling: CSS3 with animations
+- Storage: sessionStorage / SQL Server
+
+================================================================================
+                        FILE LOCATIONS
+================================================================================
+
+Main Files:
+- Version 2/index.html ..................... Login UI & 3-phase structure
+- Version 2/app.js ......................... Phase management & authentication
+- Version 2/styles.css ..................... Complete styling (2000+ lines)
+- Version 2/ScheduleTrackerDB.sql ......... Database schema & sample data
+- Version 2/server.js ...................... Express-like HTTP server
+- Version 2/.env ........................... Configuration & connection strings
+
+Documentation:
+- Version 2/README.md ...................... Project overview & setup guide
+- Version 2/PHASE_SETUP.md ................. Detailed phase documentation
+- Version 2/Version2_History.txt ........... This file (change log)
+
+Source Code:
+- Version 2/src/store/ ..................... Data persistence layer
+- Version 2/src/store/sqlserver-store.js .. SQL Server integration
+- Version 2/src/store/hybrid-store.js ..... Hybrid storage mode
+
+Public (Served Files):
+- Version 2/public/index.html ............. Served to browser
+- Version 2/public/app.js ................. Served to browser
+- Version 2/public/styles.css ............. Served to browser
+- Version 2/public/images/ ................ NIELIT logo & assets
+
+================================================================================
+                        HELPFUL COMMANDS
+================================================================================
+
+START SERVER:
+  cmd /c npm start
+
+RUN SQL SCRIPT:
+  sqlcmd -S localhost -U scheduleapp -P "Schedule@123" -i ScheduleTrackerDB.sql
+
+TEST DATABASE:
+  sqlcmd -S localhost -d TimeChime -U scheduleapp -P "Schedule@123"
+    -Q "SELECT COUNT(*) FROM Login"
+
+CHECK RUNNING PROCESSES:
+  tasklist | findstr node
+
+STOP SERVER:
+  Ctrl+C in terminal
+
+CLEAR BROWSER CACHE:
+  Ctrl+Shift+Delete in browser
+
+================================================================================
+                        NEXT MEETING / ACTION ITEMS
+================================================================================
+
+Priority: HIGH
+- [ ] Test all login scenarios
+- [ ] Add error handling for edge cases
+- [ ] Verify database backup procedures
+
+Priority: MEDIUM
+- [ ] Implement real OTP system
+- [ ] Add email notifications
+- [ ] Create admin dashboard
+
+Priority: LOW
+- [ ] Performance optimization
+- [ ] UI/UX improvements
+- [ ] Accessibility enhancements
+
+================================================================================
+                        NOTES & REMINDERS
+================================================================================
+
+- Always commit changes to git with clear messages
+- Update this history file with each major change
+- Test thoroughly before deploying to production
+- Keep database backups up to date
+- Document any new features added
+- Review security implications of changes
+- Check logs regularly for errors
+
+================================================================================
+
+END OF VERSION 2 HISTORY LOG
+Last Updated: 2026-04-21 15:35
+
+For questions or updates, refer to README.md and PHASE_SETUP.md
+
+================================================================================

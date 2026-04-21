@@ -3,25 +3,152 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Schedule Tracker Hub</title>
+  <title>TimeChime - Schedule Tracker</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <section class="login-screen" id="loginScreen">
+  <!-- PHASE 1: LOGIN SCREEN -->
+  <section class="phase-container" id="phase1-login">
     <div class="login-card">
       <div class="login-copy">
-        <img class="login-copy-image" src="images/login-page-image.svg" alt="NIELIT logo">
+        <img class="login-copy-image" src="images/login-page-image.svg" alt="TimeChime logo">
       </div>
 
       <form class="login-form" id="loginForm">
-        <h2>Login</h2>
-        <input id="loginUsername" type="text" placeholder="Username or email" autocomplete="username">
-        <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
+        <h2>Login to TimeChime</h2>
+        <input id="loginUsername" type="text" placeholder="Username" autocomplete="username" required>
+        <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" required>
         <button type="submit">Login</button>
         <p class="form-error" id="loginError"></p>
       </form>
     </div>
   </section>
-  <script src="login.js?v=1"></script>
+
+  <!-- PHASE 2: OTP VERIFICATION SCREEN -->
+  <section class="phase-container hidden" id="phase2-otp">
+    <div class="otp-card">
+      <div class="otp-header">
+        <h2>Verify OTP</h2>
+        <p class="otp-subtitle">Enter the OTP sent to your registered email</p>
+      </div>
+
+      <form class="otp-form" id="otpForm">
+        <div class="otp-input-group">
+          <input type="text" id="otpInput" placeholder="123456" maxlength="6" inputmode="numeric" required>
+        </div>
+        <button type="submit">Verify & Continue</button>
+        <p class="form-error" id="otpError"></p>
+        <p class="otp-hint">Default OTP: <strong>123456</strong></p>
+      </form>
+
+      <button class="back-btn" id="backToLoginBtn">← Back to Login</button>
+    </div>
+  </section>
+
+  <!-- PHASE 3: DASHBOARD SCREEN -->
+  <section class="phase-container hidden" id="phase3-dashboard">
+    <div class="app-shell">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <img class="sidebar-brand-image" src="images/nielit-image.svg" alt="NIELIT logo">
+        </div>
+
+        <nav class="sidebar-nav">
+          <button class="nav-link active" type="button" data-view="dashboard">Dashboard</button>
+          <button class="nav-link" type="button" data-view="organization">Organization</button>
+          <button class="nav-link" type="button" data-view="projects">Projects</button>
+          <button class="nav-link" type="button" data-view="leave">Calendar</button>
+          <button class="nav-link" type="button" data-view="meetings">Meetings</button>
+        </nav>
+
+        <div class="sidebar-summary">
+          <p class="eyebrow">Upcoming...</p>
+          <div class="sidebar-upcoming">
+            <article class="upcoming-card">
+              <span class="upcoming-label">Important task</span>
+              <strong id="upcomingTaskTitle">Checking tasks...</strong>
+              <p class="sidebar-note" id="upcomingTaskMeta">Pulling the next open task from your planner.</p>
+            </article>
+            <article class="upcoming-card">
+              <span class="upcoming-label">Meeting</span>
+              <strong id="upcomingMeetingTitle">Checking meetings...</strong>
+              <p class="sidebar-note" id="upcomingMeetingMeta">Finding the best matching meeting from your workspace.</p>
+            </article>
+            <article class="upcoming-card">
+              <span class="upcoming-label">Upcoming meeting</span>
+              <strong id="upcomingMeetingCountdown">Calculating...</strong>
+              <p class="sidebar-note" id="upcomingMeetingCountdownMeta">Working out the next meeting time.</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="sidebar-user">
+          <div>
+            <p class="eyebrow">Signed in</p>
+            <strong id="currentUserLabel">Loading...</strong>
+          </div>
+          <button id="logoutBtn" type="button">Logout</button>
+        </div>
+      </aside>
+
+      <!-- Main Content Area -->
+      <main class="main-content">
+        <header class="app-header">
+          <h1>Welcome to TimeChime</h1>
+          <p class="header-subtitle">Track your schedule and manage your time effectively</p>
+        </header>
+
+        <!-- Dashboard View -->
+        <div class="view-container active" id="view-dashboard">
+          <div class="dashboard-grid">
+            <article class="dashboard-card">
+              <h3>Today's Schedule</h3>
+              <p>Check your tasks and meetings for today</p>
+              <div id="todaySchedule">Loading...</div>
+            </article>
+            <article class="dashboard-card">
+              <h3>Active Projects</h3>
+              <p>Monitor your ongoing projects</p>
+              <div id="activeProjects">Loading...</div>
+            </article>
+            <article class="dashboard-card">
+              <h3>Team Status</h3>
+              <p>See team members' availability</p>
+              <div id="teamStatus">Loading...</div>
+            </article>
+            <article class="dashboard-card">
+              <h3>Quick Stats</h3>
+              <p>Your productivity metrics</p>
+              <div id="quickStats">Loading...</div>
+            </article>
+          </div>
+        </div>
+
+        <!-- Other Views -->
+        <div class="view-container" id="view-organization">
+          <h2>Organization</h2>
+          <p>Organization details coming soon...</p>
+        </div>
+
+        <div class="view-container" id="view-projects">
+          <h2>Projects</h2>
+          <p>Projects management coming soon...</p>
+        </div>
+
+        <div class="view-container" id="view-leave">
+          <h2>Calendar</h2>
+          <p>Calendar view coming soon...</p>
+        </div>
+
+        <div class="view-container" id="view-meetings">
+          <h2>Meetings</h2>
+          <p>Meetings management coming soon...</p>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
 </body>
 </html>

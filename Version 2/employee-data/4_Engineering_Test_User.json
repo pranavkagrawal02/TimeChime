@@ -1,0 +1,18 @@
+{
+  "profile": {
+    "employeeId": 4,
+    "employeeCode": "4",
+    "username": "test.user",
+    "name": "Test User",
+    "role": "Engineering"
+  },
+  "projects": [],
+  "projectUpdates": [],
+  "holidays": [],
+  "publicHolidays": [],
+  "leaveEvents": [],
+  "todos": [],
+  "meetings": [],
+  "schedules": [],
+  "finances": []
+}

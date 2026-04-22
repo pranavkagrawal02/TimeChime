@@ -1,9 +1,14 @@
 const fs = require("fs/promises");
 const path = require("path");
+const crypto = require("crypto");
 const { createSqlServerStore } = require("./sqlserver-store");
 
 function normalizeText(value) {
   return String(value || "").trim();
+}
+
+function hashPassword(value) {
+  return crypto.createHash("sha256").update(String(value || "") + "timechime_salt_2026").digest("hex");
 }
 
 function clone(value) {
@@ -254,17 +259,33 @@ function createHybridStore({ rootDir, dataRoot }) {
   return {
     provider: "hybrid",
     async validateLogin(username, password) {
+      const adminUser = process.env.DEMO_ADMIN_USERNAME || "admin";
+      const adminPassword = process.env.DEMO_ADMIN_PASSWORD || "admin";
+      // server.js pre-hashes the submitted password, so compare hashes
+      const isAdminMatch =
+        normalizeText(username) === adminUser &&
+        String(password || "") === hashPassword(adminPassword);
+
       try {
         const user = await sqlStore.validateLogin(username, password);
-        if (!user) {
-          return null;
+        if (user) {
+          await ensureEmployeeDb(user);
+          return user;
         }
-        await ensureEmployeeDb(user);
-        return user;
+        if (isAdminMatch) {
+          const demoUser = {
+            username: adminUser,
+            role: "Administrator",
+            employeeCode: null,
+            employeeId: null,
+            name: "Administrator"
+          };
+          await ensureEmployeeDb(demoUser);
+          return demoUser;
+        }
+        return null;
       } catch (error) {
-        const adminUser = process.env.DEMO_ADMIN_USERNAME || "admin";
-        const adminPassword = process.env.DEMO_ADMIN_PASSWORD || "admin";
-        if (normalizeText(username) === adminUser && String(password || "") === adminPassword) {
+        if (isAdminMatch) {
           const demoUser = {
             username: adminUser,
             role: "Administrator",
@@ -277,6 +298,18 @@ function createHybridStore({ rootDir, dataRoot }) {
         }
         throw error;
       }
+    },
+    async checkUsernameExists(username) {
+      return sqlStore.checkUsernameExists(username);
+    },
+    async checkEmailExists(email) {
+      return sqlStore.checkEmailExists(email);
+    },
+    async registerNewEmployee(employeeData) {
+      return sqlStore.registerNewEmployee(employeeData);
+    },
+    async getEmployeeById(empID) {
+      return sqlStore.getEmployeeById(empID);
     },
     async getBootstrap(actor) {
       const db = await readEmployeeDb(actor);

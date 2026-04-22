@@ -6,8 +6,45 @@
 Project: TimeChime Schedule Tracker
 Version: 2.0
 Start Date: 2026-04-21
-Current Date: 2026-04-21
-Status: In Development - FEATURE: Registration System (Phase 1)
+Current Date: 2026-04-22
+Status: Registration System Complete & Tested
+
+================================================================================
+                        SESSION 2026-04-22 - Registration Testing
+================================================================================
+
+COMPLETED TODAY:
+✅ 1. SQL Server service started (MSSQL$SQLEXPRESS was stopped)
+✅ 2. Schema migration applied via database/migration-add-employee-fields.sql
+    - Added EmpEmail, EmpPhone, EmpDesignation, EmpStatus columns
+    - Backfilled values for 3 existing employees
+    - Script is idempotent (safe to re-run)
+✅ 3. Fixed hybrid-store.js to proxy the 4 registration methods
+    (checkUsernameExists, checkEmailExists, registerNewEmployee, getEmployeeById)
+✅ 4. Switched package.json dev flow: using "npm run start:prod" since
+    scripts/sync-public.js is absent in Version 2.
+✅ 5. Created scripts/test-registration.ps1 (end-to-end API tests)
+
+TEST RESULTS (all pass):
+ ✅ TEST 1: Valid registration       -> 201, empID=4
+ ✅ TEST 2: Duplicate username       -> 409 "Username already exists"
+ ✅ TEST 3: Duplicate email          -> 409 "Email already registered"
+ ✅ TEST 4: Short password           -> 400 "Password must be at least 8 characters"
+ ✅ TEST 5: Missing required fields  -> 400 "All fields are required"
+ ✅ TEST 6: Login as new user        -> 200, user payload returned
+ ✅ TEST 7: Wrong password           -> 401 "Invalid username or password."
+ ✅ JSON file 4_Test.json created in EmpDetailsJSON/
+ ✅ DB row 4 verified (Employee + Login)
+
+NOTES FOR NEXT SESSION:
+ - Version 2 still has "npm start" pointing at a missing sync-public.js.
+   Either copy scripts/sync-public.js from Version 1 or switch npm start
+   to plain "node server.js".
+ - Test user "test.user / TestPass123" is now in DB (EmpID 4).
+   Delete if you want a clean slate:
+     sqlcmd -S localhost -d TimeChime -U scheduleapp -P "Schedule@123" ^
+            -Q "DELETE FROM Login WHERE EmpID=4; DELETE FROM Employee WHERE EmpID=4;"
+   Also remove EmpDetailsJSON/4_Test.json.
 
 ================================================================================
                         CURRENT SESSION (2026-04-21 Session 2)

@@ -18,8 +18,8 @@ const loginError = document.getElementById("loginError");
 
 // Phase 1: Registration
 const registrationForm = document.getElementById("registrationForm");
-const loginTabBtn = document.getElementById("loginTabBtn");
-const registerTabBtn = document.getElementById("registerTabBtn");
+const goToRegisterBtn = document.getElementById("goToRegisterBtn");
+const goToLoginBtn = document.getElementById("goToLoginBtn");
 const registrationError = document.getElementById("registrationError");
 const registrationSuccess = document.getElementById("registrationSuccess");
 
@@ -59,28 +59,23 @@ function clearErrors() {
 // =====================================================
 
 function toggleTab(tabName) {
-  // Hide/show forms
   if (tabName === "login") {
     loginForm.classList.remove("hidden");
     loginForm.classList.add("active");
     registrationForm.classList.add("hidden");
     registrationForm.classList.remove("active");
-    loginTabBtn.classList.add("active");
-    registerTabBtn.classList.remove("active");
   } else {
     loginForm.classList.add("hidden");
     loginForm.classList.remove("active");
     registrationForm.classList.remove("hidden");
     registrationForm.classList.add("active");
-    loginTabBtn.classList.remove("active");
-    registerTabBtn.classList.add("active");
   }
   clearErrors();
 }
 
-// Tab button event listeners
-loginTabBtn.addEventListener("click", () => toggleTab("login"));
-registerTabBtn.addEventListener("click", () => toggleTab("register"));
+// Switch links below each form
+goToRegisterBtn.addEventListener("click", () => toggleTab("register"));
+goToLoginBtn.addEventListener("click", () => toggleTab("login"));
 
 // =====================================================
 // PHASE 1: LOGIN HANDLER

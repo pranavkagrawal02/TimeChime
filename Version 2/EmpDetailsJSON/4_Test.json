@@ -1,0 +1,46 @@
+{
+  "empID": 4,
+  "empFirstName": "Test",
+  "empLastName": "User",
+  "empFullName": "Test User",
+  "empDepartment": "Engineering",
+  "empPosition": "Intern",
+  "empEmail": "test.user@company.com",
+  "empPhone": "+91-9000000001",
+  "empJoinDate": "2026-04-22",
+  "empStatus": "Active",
+  "empUsername": "test.user",
+  "empPassword": "",
+  "empDesignation": "Intern",
+  "createdAt": "2026-04-22",
+  "updatedAt": "2026-04-22",
+  "empImage": "profile_placeholder.jpg",
+  "empAddress": "",
+  "empCity": "",
+  "empState": "",
+  "empZipCode": "",
+  "empCountry": "India",
+  "emergencyContact": {
+    "name": "TBD",
+    "phone": "TBD",
+    "relation": "TBD"
+  },
+  "schedule": {
+    "workingDays": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday"
+    ],
+    "workingHours": "09:00-18:00",
+    "officeLocation": "Head Office"
+  },
+  "attendance": {
+    "presentDays": 0,
+    "absentDays": 0,
+    "leaveDays": 0
+  },
+  "notes": "Newly registered employee",
+  "isActive": true
+}

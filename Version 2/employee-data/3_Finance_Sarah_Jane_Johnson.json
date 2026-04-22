@@ -1,0 +1,18 @@
+{
+  "profile": {
+    "employeeId": 3,
+    "employeeCode": "3",
+    "username": "sarah",
+    "name": "Sarah Jane Johnson",
+    "role": "Finance"
+  },
+  "projects": [],
+  "projectUpdates": [],
+  "holidays": [],
+  "publicHolidays": [],
+  "leaveEvents": [],
+  "todos": [],
+  "meetings": [],
+  "schedules": [],
+  "finances": []
+}

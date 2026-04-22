@@ -1,0 +1,18 @@
+{
+  "profile": {
+    "employeeId": null,
+    "employeeCode": null,
+    "username": "admin",
+    "name": "Administrator",
+    "role": "Administrator"
+  },
+  "projects": [],
+  "projectUpdates": [],
+  "holidays": [],
+  "publicHolidays": [],
+  "leaveEvents": [],
+  "todos": [],
+  "meetings": [],
+  "schedules": [],
+  "finances": []
+}

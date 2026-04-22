@@ -14,12 +14,6 @@
         <img class="login-copy-image" src="images/login-page-image.svg" alt="TimeChime logo">
       </div>
 
-      <!-- Tab Navigation -->
-      <div class="tab-container">
-        <button class="tab-button active" id="loginTabBtn" data-tab="login">Login</button>
-        <button class="tab-button" id="registerTabBtn" data-tab="register">New Registration</button>
-      </div>
-
       <!-- LOGIN FORM TAB -->
       <form class="login-form active" id="loginForm" data-form="login">
         <h2>Login to TimeChime</h2>
@@ -27,6 +21,10 @@
         <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" required>
         <button type="submit">Login</button>
         <p class="form-error" id="loginError"></p>
+        <p class="form-switch">
+          Don't have an account?
+          <button type="button" class="link-button" id="goToRegisterBtn" data-tab="register">New Registration</button>
+        </p>
       </form>
 
       <!-- REGISTRATION FORM TAB -->
@@ -46,6 +44,10 @@
         <button type="submit">Create Account</button>
         <p class="form-error" id="registrationError"></p>
         <p class="form-success" id="registrationSuccess"></p>
+        <p class="form-switch">
+          Already have an account?
+          <button type="button" class="link-button" id="goToLoginBtn" data-tab="login">Back to Login</button>
+        </p>
       </form>
     </div>
   </section>

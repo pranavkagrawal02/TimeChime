@@ -2276,6 +2276,32 @@ button:active {
 }
 
 /* =====================================================
+   FORM SWITCH LINK (below submit button)
+   ===================================================== */
+
+.form-switch {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: var(--blue);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: inherit;
+  text-decoration: none;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+}
+
+/* =====================================================
    REGISTRATION FORM STYLES
    ===================================================== */
 

@@ -1,4 +1,12 @@
 ================================================================================
+2026-04-27 - Automated UI Testing Added
+--------------------------------------------------------------------------------
+* Created testing/playwright-login-otp.spec.js (Playwright test script)
+  - Automates login and OTP verification flow
+  - Fills login form, enters OTP (123456), checks dashboard visibility
+  - Usage: npx playwright test testing/playwright-login-otp.spec.js
+  - Purpose: Debug and verify UI flow for further analysis
+
                     TIMECHIME - VERSION 2 HISTORY LOG
                         Development & Changes Tracker
 ================================================================================
@@ -36,7 +44,6 @@ TEST RESULTS (all pass):
  ✅ JSON file 4_Test.json created in EmpDetailsJSON/
  ✅ DB row 4 verified (Employee + Login)
 
-NOTES FOR NEXT SESSION:
  - Version 2 still has "npm start" pointing at a missing sync-public.js.
    Either copy scripts/sync-public.js from Version 1 or switch npm start
    to plain "node server.js".
@@ -45,6 +52,26 @@ NOTES FOR NEXT SESSION:
      sqlcmd -S localhost -d TimeChime -U scheduleapp -P "Schedule@123" ^
             -Q "DELETE FROM Login WHERE EmpID=4; DELETE FROM Employee WHERE EmpID=4;"
    Also remove EmpDetailsJSON/4_Test.json.
+
+================================================================================
+                        DATA SECURITY & ENCRYPTION (2026-04-22)
+================================================================================
+
+All employee JSON files in EmpDetailsJSON/ are now ENCRYPTED by default.
+
+Encryption Details:
+  - Algorithm: AES-256-CBC
+  - Key: salt + key (default: "nielit" + "nielit" = "nielitnielit")
+  - Salt: "nielit" (can be changed in code)
+  - IV: Random, stored with each file
+  - File format: { iv: "...", data: "..." } (base64)
+  - Plain JSON is never written to disk
+
+To decrypt: Use the decryptJsonData() helper in server.js with the same salt/key.
+
+Rationale: Protects sensitive employee data at rest. Only the server (with code access) can decrypt.
+
+See server.js for implementation details.
 
 ================================================================================
                         CURRENT SESSION (2026-04-21 Session 2)

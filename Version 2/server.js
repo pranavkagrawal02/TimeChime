@@ -1,3 +1,29 @@
+// ===== Helper: Get Admin User for Password Check =====
+async function isAdminPasswordValid(password) {
+  // Use the same hash logic as login
+  const hashed = hashPassword(password);
+  // Try to find admin user in DB (via store)
+  const adminUser = process.env.DEMO_ADMIN_USERNAME || "admin";
+  const admin = await store.validateLogin(adminUser, hashed);
+  return !!admin && admin.role && admin.role.toLowerCase().includes("admin");
+}
+
+// ===== Helper: Read/Decrypt Employee JSON File =====
+function readAndDecryptEmpJson(fileName) {
+  const empDetailsDir = path.join(ROOT, "EmpDetailsJSON");
+  const filePath = path.join(empDetailsDir, fileName);
+  if (!fs.existsSync(filePath)) throw new Error("File not found");
+  const encObj = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  return decryptJsonData(encObj, DEFAULT_SALT, DEFAULT_KEY);
+}
+
+// ===== Helper: Encrypt/Write Employee JSON File =====
+function encryptAndWriteEmpJson(fileName, jsonData) {
+  const empDetailsDir = path.join(ROOT, "EmpDetailsJSON");
+  const filePath = path.join(empDetailsDir, fileName);
+  const encrypted = encryptJsonData(jsonData, DEFAULT_SALT, DEFAULT_KEY);
+  fs.writeFileSync(filePath, JSON.stringify(encrypted, null, 2), "utf8");
+}
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -12,16 +38,44 @@ function hashPassword(password) {
   return crypto.createHash("sha256").update(password + "timechime_salt_2026").digest("hex");
 }
 
-// ===== JSON File Creation Function =====
+
+// ===== Encryption Helpers =====
+const DEFAULT_SALT = "nielit";
+const DEFAULT_KEY = "nielit";
+function getEncryptionKey(salt = DEFAULT_SALT, key = DEFAULT_KEY) {
+  // AES-256 needs 32 bytes key
+  const fullKey = (salt + key).padEnd(32, "_").slice(0, 32);
+  return Buffer.from(fullKey, "utf8");
+}
+
+function encryptJsonData(jsonObj, salt = DEFAULT_SALT, key = DEFAULT_KEY) {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv("aes-256-cbc", getEncryptionKey(salt, key), iv);
+  const jsonStr = JSON.stringify(jsonObj);
+  let encrypted = cipher.update(jsonStr, "utf8", "base64");
+  encrypted += cipher.final("base64");
+  return {
+    iv: iv.toString("base64"),
+    data: encrypted
+  };
+}
+
+function decryptJsonData(encObj, salt = DEFAULT_SALT, key = DEFAULT_KEY) {
+  const iv = Buffer.from(encObj.iv, "base64");
+  const encrypted = encObj.data;
+  const decipher = crypto.createDecipheriv("aes-256-cbc", getEncryptionKey(salt, key), iv);
+  let decrypted = decipher.update(encrypted, "base64", "utf8");
+  decrypted += decipher.final("utf8");
+  return JSON.parse(decrypted);
+}
+
+// ===== JSON File Creation Function (Encrypted) =====
 async function createEmployeeJsonFile(empID, employeeData) {
   try {
     const empDetailsDir = path.join(ROOT, "EmpDetailsJSON");
-
-    // Create directory if it doesn't exist
     if (!fs.existsSync(empDetailsDir)) {
       fs.mkdirSync(empDetailsDir, { recursive: true });
     }
-
     const firstName = employeeData.EmpFirstName || "Employee";
     const fileName = `${empID}_${firstName}.json`;
     const filePath = path.join(empDetailsDir, fileName);
@@ -67,8 +121,9 @@ async function createEmployeeJsonFile(empID, employeeData) {
       isActive: true
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(jsonData, null, 2), "utf8");
-    console.log(`Created JSON file: ${filePath}`);
+    const encrypted = encryptJsonData(jsonData, DEFAULT_SALT, DEFAULT_KEY);
+    fs.writeFileSync(filePath, JSON.stringify(encrypted, null, 2), "utf8");
+    console.log(`Created encrypted JSON file: ${filePath}`);
     return true;
   } catch (error) {
     console.error("Error creating JSON file:", error);
@@ -219,6 +274,49 @@ function getRequestActor(request) {
 }
 
 async function handleApi(request, response, pathname) {
+    // ADMIN: View Employee JSON (Decrypted, password protected)
+    if (request.method === "POST" && pathname === "/api/admin/view-emp-json") {
+      try {
+        const body = await parseBody(request);
+        const { fileName, password } = body;
+        if (!fileName || !password) {
+          sendJson(response, 400, { error: "File name and password required" });
+          return;
+        }
+        const valid = await isAdminPasswordValid(password);
+        if (!valid) {
+          sendJson(response, 403, { error: "Password incorrect" });
+          return;
+        }
+        const data = readAndDecryptEmpJson(fileName);
+        sendJson(response, 200, { data });
+      } catch (err) {
+        sendJson(response, 400, { error: err.message || "Failed to read file" });
+      }
+      return;
+    }
+
+    // ADMIN: Update Employee JSON (Encrypted, password protected)
+    if (request.method === "POST" && pathname === "/api/admin/update-emp-json") {
+      try {
+        const body = await parseBody(request);
+        const { fileName, password, data } = body;
+        if (!fileName || !password || !data) {
+          sendJson(response, 400, { error: "File name, password, and data required" });
+          return;
+        }
+        const valid = await isAdminPasswordValid(password);
+        if (!valid) {
+          sendJson(response, 403, { error: "Password incorrect" });
+          return;
+        }
+        encryptAndWriteEmpJson(fileName, data);
+        sendJson(response, 200, { success: true });
+      } catch (err) {
+        sendJson(response, 400, { error: err.message || "Failed to update file" });
+      }
+      return;
+    }
   const actor = getRequestActor(request);
 
   if (request.method === "POST" && pathname === "/api/login") {

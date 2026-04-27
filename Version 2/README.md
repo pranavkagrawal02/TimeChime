@@ -105,6 +105,31 @@ Authentication behavior:
 - in JSON mode, `admin / admin` comes from code configuration, not from a user record in [db.json](/d:/PranavData/scheduleTrackerProject/db.json)
 - when `STORE_PROVIDER=sqlserver`, the app switches to full SQL Server-backed storage
 
+
+## Automated UI Testing
+
+You can now run automated UI tests for the login and OTP flow using Playwright:
+
+### Run Playwright Login/OTP Test
+1. Install Playwright (if not already):
+  ```powershell
+  npm install -D @playwright/test
+  npx playwright install
+  ```
+2. Run the test:
+  ```powershell
+  npx playwright test testing/playwright-login-otp.spec.js
+  ```
+3. The script will:
+  - Open the app
+  - Fill in login credentials
+  - Enter OTP (123456)
+  - Verify dashboard loads
+  - Print the result for analysis
+
+Test script location: `testing/playwright-login-otp.spec.js`
+
+---
 ## Project structure
 
 - Frontend source: `index.html`, `dashboard.html`, `styles.css`, `login.js`, `dashboard-dynamic.js`

@@ -1,3 +1,28 @@
+        <!-- ADMIN PANEL: View/Edit Employee JSON -->
+        <div class="view-container" id="view-admin-panel">
+          <h2>Admin Panel: View/Edit Employee JSON</h2>
+          <form id="adminEmpJsonForm">
+            <label for="adminEmpJsonFile">Employee JSON File:</label>
+            <select id="adminEmpJsonFile">
+              <option value="">-- Select File --</option>
+              <option value="1_Pranav.json">1_Pranav.json</option>
+              <option value="2_John.json">2_John.json</option>
+              <option value="3_Sarah.json">3_Sarah.json</option>
+              <option value="4_Test.json">4_Test.json</option>
+            </select>
+            <label for="adminEmpJsonPassword">Admin Password:</label>
+            <input type="password" id="adminEmpJsonPassword" placeholder="Enter admin password" required>
+            <button type="submit">View & Edit</button>
+            <p class="form-error" id="adminEmpJsonError"></p>
+          </form>
+          <div id="adminEmpJsonEditor" style="display:none; margin-top:1em;">
+            <h3>Decrypted Employee JSON</h3>
+            <textarea id="adminEmpJsonTextarea" rows="16" style="width:100%; font-family:monospace;"></textarea>
+            <button id="adminEmpJsonSaveBtn">Save Changes</button>
+            <p class="form-success" id="adminEmpJsonSaveMsg"></p>
+          </div>
+        </div>
+  <button class="nav-link" type="button" data-view="admin-panel">Admin Panel</button>
 <!DOCTYPE html>
 <html lang="en">
 <head>

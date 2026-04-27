@@ -1,3 +1,74 @@
+// =============================
+// ADMIN PANEL: View/Edit Employee JSON
+// =============================
+const adminEmpJsonForm = document.getElementById("adminEmpJsonForm");
+const adminEmpJsonFile = document.getElementById("adminEmpJsonFile");
+const adminEmpJsonPassword = document.getElementById("adminEmpJsonPassword");
+const adminEmpJsonError = document.getElementById("adminEmpJsonError");
+const adminEmpJsonEditor = document.getElementById("adminEmpJsonEditor");
+const adminEmpJsonTextarea = document.getElementById("adminEmpJsonTextarea");
+const adminEmpJsonSaveBtn = document.getElementById("adminEmpJsonSaveBtn");
+const adminEmpJsonSaveMsg = document.getElementById("adminEmpJsonSaveMsg");
+
+if (adminEmpJsonForm) {
+  adminEmpJsonForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    adminEmpJsonError.textContent = "";
+    adminEmpJsonSaveMsg.textContent = "";
+    adminEmpJsonEditor.style.display = "none";
+    const fileName = adminEmpJsonFile.value;
+    const password = adminEmpJsonPassword.value;
+    if (!fileName || !password) {
+      adminEmpJsonError.textContent = "Please select a file and enter password.";
+      return;
+    }
+    try {
+      const res = await fetch("/api/admin/view-emp-json", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName, password })
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        adminEmpJsonError.textContent = result.error || "Failed to decrypt file.";
+        return;
+      }
+      adminEmpJsonTextarea.value = JSON.stringify(result.data, null, 2);
+      adminEmpJsonEditor.style.display = "block";
+    } catch (err) {
+      adminEmpJsonError.textContent = "Error: " + (err.message || err);
+    }
+  });
+
+  adminEmpJsonSaveBtn.addEventListener("click", async () => {
+    adminEmpJsonSaveMsg.textContent = "";
+    adminEmpJsonError.textContent = "";
+    const fileName = adminEmpJsonFile.value;
+    const password = adminEmpJsonPassword.value;
+    let data;
+    try {
+      data = JSON.parse(adminEmpJsonTextarea.value);
+    } catch {
+      adminEmpJsonError.textContent = "Invalid JSON format.";
+      return;
+    }
+    try {
+      const res = await fetch("/api/admin/update-emp-json", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName, password, data })
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        adminEmpJsonError.textContent = result.error || "Failed to save file.";
+        return;
+      }
+      adminEmpJsonSaveMsg.textContent = "✓ Changes saved and encrypted.";
+    } catch (err) {
+      adminEmpJsonError.textContent = "Error: " + (err.message || err);
+    }
+  });
+}
 // =====================================================
 // PHASE MANAGEMENT SYSTEM
 // =====================================================
